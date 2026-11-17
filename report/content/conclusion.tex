@@ -1,24 +1,26 @@
-\section{Summary of Strategy}
+\section{Summary}
 \label{sec:10-1}
 
-The project connects e-commerce revenue generation with customer retention and churn prediction.
+The project asked who should get a retention discount when the weekly budget is fixed. Two years of Online Retail II transactions were turned into weekly snapshots of every active customer, labeled with whether the customer makes no purchase in the next 90 days (Chapters~\ref{ch:data-understanding}--\ref{ch:data-preparation}). A regularized logistic regression on eight behavioral features ranks these customers with a weekly test AUC of 0.744--0.773, and its calibrated probability gives the expected cost and margin of an offer (Chapter~\ref{ch:modeling}). At the same expected discount spend, ranking customers by this churn risk adds \textbf{\pounds2,982 (49\%)} more simulated net margin per weekly cohort than picking the customers silent the longest, and leads in all ten test weeks (Chapter~\ref{ch:evaluation}).
 
 \section{Business-to-Technical Translation}
 \label{sec:10-2}
 
-The business objective is to increase sales revenue through repeat-purchase revenue from existing customers while controlling retention and marketing cost. The technical solution is customer-level churn prediction and risk ranking.
+The business objective -- recover purchases that would otherwise be lost without giving margin away to customers who would buy anyway -- translates into three technical pieces: a churn probability for every active customer each week, an expected discount cost and expected margin per offer computed from it, and a rule that fills a fixed weekly budget in order of churn risk.
 
-\section{Operational Strategy}
+\section{Recommendation}
 \label{sec:10-3}
 
-Weekly batch scoring of all active customers, customer snapshots, training on every weekly snapshot with per-customer weights, suppression of contacted customers, churn prediction, ranking by expected loss (calibrated churn probability $\times$ customer value) and Top-K targeting with a small weekly budget.
+\textbf{Weekly policy.} Every Monday, rank active customers by their predicted chance of making no purchase in the next 90 days, and offer a 10\% voucher to the highest-ranked customers until adding another would exceed the weekly expected discount budget. At about \pounds8,200 per week, that is roughly 826 customers a week (Section~\ref{sec:8-3}). With a limit of about 500 contacts per week, test the 485-contact option instead: in the simulation it saves 341 contacts and gives up \pounds833 of margin compared with risk ranking.
+
+\textbf{Pilot and rollout.} Approve a 6--8 week enrolment period. Before launch, Finance confirms product margins and the discount cap, Marketing confirms weekly contact capacity, and Analytics verifies the risk estimates on data separate from the test weeks and sets the pilot sample size. Randomly hold back 20\% of the selected customers as a no-offer control; enrol each customer once, keep assignments fixed and follow each customer for 90 days. Compare net contribution per assigned customer after discounts, returns and contact costs, reporting one-time and repeat buyers separately. Expand if the offer produces a credible increase over the control group and discount spending stays within the approved cap.
 
 \section{Limitations}
 \label{sec:10-4}
 
-The dataset lacks marketing treatment, cost, margin and control-group information, so causal uplift, incremental revenue and true ROI cannot be established. The $\sim$2-year span and seasonality limit the size and representativeness of the test period.
+The dataset lacks marketing treatment, cost, margin and control-group information, so causal uplift, incremental revenue and true ROI cannot be established; every margin figure is a simulation under stated assumptions. The $\sim$2-year span and seasonality limit the size and representativeness of the test period. Chapter~\ref{ch:robustness} discusses how far the recommendation depends on these limits.
 
 \section{Future Work}
 \label{sec:10-5}
 
-Validate the expected-loss ranking in a pilot campaign against a held-out control group, integrate campaign and financial data, apply uplift modeling and next-best-action optimization, and perform complete profitability analysis.
+Use the pilot's treatment and control groups to measure the real response and redemption rates, replace the assumed margins with product-level costs, and then move from churn risk to uplift modeling -- predicting who responds to the offer rather than who would leave. A calendar feature or seasonal recalibration would keep the probability level, and therefore the budget, accurate through the year.

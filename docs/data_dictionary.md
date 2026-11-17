@@ -9,11 +9,11 @@
 | Licence | CC BY 4.0 (credit required) |
 | Citation | Chen, D. (2012). Online Retail II [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5CG6D |
 | Content | All transactions of a UK-based, registered, non-store online retailer of all-occasion gift-ware (many customers are wholesalers), 2009-12-01 to 2011-12-09, donated 2019-09-20; 1,067,371 rows, 5,942 distinct Customer IDs; 22.8% of rows have no Customer ID |
-| Loaded by | `notebooks/00_explore_data.ipynb`: reads the two Excel sheets and writes `data/raw/online_retail_II.parquet` (gitignored) |
+| Loaded by | `notebooks/01_data_understanding.ipynb` and `notebooks/03_data_preparation.ipynb`: read the two Excel sheets and write `data/raw/online_retail_II.parquet` (gitignored) if it does not exist yet |
 | Retrieval date | 2 November 2026 (date the team obtained the data and converted it to parquet) |
 | What the data does not contain | product cost, gross margin, past promotions, discounts offered, customer demographics |
 
-### Cleaning log (valid-purchase filter, `notebooks/07_data_preparation.ipynb`, report Section 5.2)
+### Cleaning log (valid-purchase filter, `notebooks/03_data_preparation.ipynb`, report Section 5.2)
 
 A row is kept only if it:
 1. has a Customer ID;
@@ -22,16 +22,18 @@ A row is kept only if it:
 4. is a real product (StockCode starting with a digit; non-product codes are excluded);
 5. is not an exact duplicate of an earlier row.
 
-Rows without a Customer ID cannot be attached to any customer history and are dropped from every customer-level result.
+Rows without a Customer ID cannot be attached to any customer history and are dropped from every customer-level result. The descriptive segments of `notebooks/02_customer_segments.ipynb` apply the same Customer ID, product-code, price and duplicate rules but keep cancellations as returns, which are netted out of monetary value.
 
 ### Joins and derived tables
 
 | Table | Built by | Key |
 |---|---|---|
-| `data/processed/modeling_dataset_h90.parquet` | notebook 07 | customer_id x snapshot_date |
-| `data/results/churn_scores_h90.parquet` | notebook 09 | customer_id x snapshot_date |
-| `data/results/churn_scores_h90_calibrated.parquet` | **modeling team delivery, copied in; no notebook in this repo produces it** | customer_id x snapshot_date |
-| `data/results/customer_scores_actions_h90.parquet` | notebook 12 (joins the calibrated scores with value, RFM segment and actions) | customer_id x snapshot_date |
+| `data/processed/modeling_dataset_h90.parquet` | notebook 03 | customer_id x snapshot_date |
+| `models/churn_model_h90.joblib` | notebook 04 (model, preprocessing, calibration offset, risk-band cut-offs) | -- |
+| `data/results/churn_scores_h90.parquet` | notebook 05 (raw and calibrated probability, risk band, rank) | customer_id x snapshot_date |
+| `data/results/budget_comparison.csv`, `equal_budget_scenarios.csv`, `margin_sensitivity.csv` | notebook 06 (equal-budget comparison) | list x scenario |
+| `data/results/customer_scores_actions_h90.parquet` | notebook 07 (joins the scores with value, RFM segment and the weekly voucher action) | customer_id x snapshot_date |
+| `data/results/rfm8_segments.parquet` | `src/make_rfm8.py` (weekly behaviour segments for the dashboard) | customer_id x snapshot_date |
 
 ## 2. Raw schema (`online_retail_II.parquet`)
 
@@ -71,7 +73,7 @@ Unit: one customer on one Monday snapshot date. Features use data up to that dat
 | split | `train`, `validation`, `test`, or `none` (embargo gaps) |
 | value_v | Customer value V: average order value capped at the P99 of the training period |
 | r_score, f_score, m_score | RFM quintile scores fitted on the training period |
-| rfm_segment | Champions, Loyal, Potential, At Risk, Can't Lose, Hibernating (6-group rule from the pipeline; the dashboard and brief use `segment8`, see below) |
+| rfm_segment | Champions, Loyal, Potential, At Risk, Can't Lose, Hibernating (quintile rule fitted on the training period; the dashboard uses `segment8`, see below) |
 
 Split (embargo 90 days between periods): train 2010-06-07 to 2010-11-15; validation 2011-02-14 to 2011-04-04; test 2011-07-04 to 2011-09-05. The last scored week (2011-12-05) has no label yet.
 
@@ -83,14 +85,15 @@ Test weeks plus later unlabelled weeks (`split` = `test` or `deployment`).
 |---|---|
 | customer_id, snapshot_date, split | Keys and period |
 | churn_probability | Raw model probability of no purchase in 90 days |
-| churn_probability_calibrated | Calibrated probability (logit offset from the modeling team); used for all policy results |
-| risk_score, risk_band | 0-1000 score and decile band |
+| churn_probability_calibrated | Calibrated probability, expit(logit − 0.259) (report Section 6.3); used for all policy results |
+| risk_band | Band 1-10 from fixed cut-offs at the validation deciles of the calibrated probability |
+| rank | Rank within the week by calibrated probability (1 = highest risk) |
 | value_v | Capped average order value (GBP) |
 | rfm_segment | Segment as above |
 | customer_type | `repeat` or `one-time` |
+| expected_discount_cost | d*V*(p*e + (1-p)*r), expected cost of one offer, Base scenario |
 | expected_margin | E[dM] = p*e*V*(m-d) - (1-p)*r*V*d - c, Base scenario |
-| rank_by_margin | Rank within the week by expected_margin |
-| action | Retain (top 20% by expected margin and E[dM] > 0), Nurture (not Retain, top 20% risk), No-offer |
+| action | Voucher (down the week's risk ranking until the cumulative expected discount cost reaches the weekly budget of report Section 7.3, about £8,219) or No voucher |
 | model_version | `lr_extended_c0.01_weighted_cal_h90` |
 | churn_actual | Observed churn label (empty for unlabelled weeks) |
 | scenario | Scenario string used |
@@ -99,4 +102,4 @@ Scenario parameters: d = discount, e = response of customers who would not other
 
 ## Dashboard segments (`data/results/rfm8_segments.parquet`)
 
-Built by `src/make_rfm8.py` with the 8-group rule of `output/02_rfm_segmentation.ipynb` (part B), computed at each weekly snapshot: Champions (top-10% spend, R<=90), VIP at risk (top-10% spend, R>90), Loyal (R<=90, F>=4), Developing (R<=90, F=2-3), One-time recent (R<=90, F=1), Cooling (R 91-180), Lapsed (R 181-365), Dormant (R>365). The score table only holds active customers, so Lapsed and Dormant do not appear in the dashboard. Column `segment8`.
+Built by `src/make_rfm8.py` with the 8-group rule of `notebooks/02_customer_segments.ipynb` (Section 4.6.3), computed at each weekly snapshot: Champions (top-10% spend, R<=90), VIP at risk (top-10% spend, R>90), Loyal (R<=90, F>=4), Developing (R<=90, F=2-3), One-time recent (R<=90, F=1), Cooling (R 91-180), Lapsed (R 181-365), Dormant (R>365). The score table only holds active customers, so Lapsed and Dormant do not appear in the dashboard. Column `segment8`.

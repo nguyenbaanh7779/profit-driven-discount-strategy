@@ -2,11 +2,11 @@
 
 This document records the business insights drawn from the report, the problems they exposed, and how each problem was handled (or is proposed to be handled). Use it as shared context when discussing targeting, business impact, or the Evaluation and Deployment chapters.
 
-All figures are on the test period (10 scoring weeks, 2,907 customers, churn rate 40.1%) unless stated otherwise. Re-check them against [`report/content/evaluation.tex`](../../report/content/evaluation.tex) before quoting, since they change when the pipeline is rerun.
+All figures are on the test period (10 scoring weeks, 2,907 customers, churn rate 40.1%) unless stated otherwise. Re-check them against [`report/content/evaluation.tex`](../../report/content/evaluation.tex) and `notebooks/06_business_impact.ipynb` before quoting, since they change when the pipeline is rerun.
 
 | # | Insight | Status |
 |---|---|---|
-| 1 | The model catches churners well, but they are mostly low-value customers, so business impact is low | Handled: Expected Loss ranking (`feat/value-aware-impact`, commit `174c16d`, 2026-10-30) |
+| 1 | The model catches churners well, but they are mostly low-value customers, so business impact looked low | Resolved: compared at the same discount budget, ranking by churn risk earns the most (`notebooks/06_business_impact.ipynb`, report Chapter 7); the Expected Loss ranking was dropped |
 | 2 | The top 5% of customers hold 52% of revenue; their real risk is slowing down, not leaving | Open: proposed handling only |
 
 ---
@@ -37,47 +37,31 @@ All figures are on the test period (10 scoring weeks, 2,907 customers, churn rat
 
 The ranking objective (**who is most likely to leave**) does not match the business objective (**how much revenue we expect to lose**).
 
-### Problems found while checking the business-impact calculation
+### How it was resolved
 
-The impact chain is: Revenue at risk × e (40% retention success) × m (35% margin) − £0.50 contact cost − incentive cost (TP × e + FP × r) × £5, with r = 20%. Checking how each term was computed exposed five problems:
+The first evaluation held the **number of contacts** fixed (top K% per week) and valued each targeted churner by revenue at risk. Checking it exposed several measurement problems (uncapped order value, one order per churner, weekly double counting) and one modeling problem: the weighted training rows made the probabilities too high, fixed with an intercept offset fitted on the refit pool (δ = 0.259; Brier 0.198 → 0.194). A value-aware **Expected Loss** ranking (calibrated probability × value × expected orders) was added in #16 and looked best under that measurement.
 
-| # | Problem | Cause | Handling | Result |
-|---|---|---|---|---|
-| 1 | Revenue at risk used the **uncapped** AOV | Chapter 7 used `avg_order_value_so_far`, while Section 5.5 defines `value_v` = AOV capped at the training P99 (£1,956.84) | Added `rar_v` = `value_v`. Tested the hypothesis "the recency rule wins because it catches wholesale customers" | Only partly true: four wholesale-sized rows carry £54K of the recency rule's revenue at risk. With the cap, its net impact drops from £70,214 to £63,767, below the RFM rule. But the model still loses, because its churners are mostly one-time buyers |
-| 2 | Revenue at risk counted **one order** only | Undervalues regular buyers, who would lose several orders within H = 90 days | Added `rar_v_orders` = `value_v` × clip(90 / `mean_gap_so_far`, 1, 13); one-time customers count one order | Mean exposure more than doubles (£374 → £833) and spreads widely |
-| 3 | Campaigns were counted **per weekly row**, not per customer | Every customer is rescored every week, so the same customer stays in the top K for several weeks | Added two counting schemes: **unique** (count each customer at first targeting) and **suppressed** (fixed weekly budget; contacted customers are excluded for 13 weeks, as in Section 8.5) | The model's 1,831 TP are only 425 distinct customers (~4.3 weeks each), so totals were inflated 3–4×. Unique counting is not budget-equal (random wins by spreading wider), so **suppressed** is the realistic scheme |
-| 4 | Probabilities were **overestimated** | Weighting by 1/n raises the effective training churn rate to 62.0% (unweighted 50.0%). Multiplying P by value needs P on the right scale | Intercept-only calibration: logit_cal = logit − δ, with δ = 0.259 fitted on the refit pool so the mean calibrated probability equals its churn rate (50.0%). The formula prior correction logit(0.620) − logit(0.500) = 0.489 overshoots, because the weights also change the feature mix | Brier 0.198 → 0.194; mean predicted probability 0.468 → 0.418 (actual churn 40.1%) |
-| 5 | Suppressed counting **saturates** at K = 10% | Over 10 test weeks with 13-week suppression, a 10% weekly budget contacts 83% of customers, so every ranking reaches nearly the same people | Added smaller weekly budgets K = 1%, 2%, 5% | Candidates separate again (results below) |
+The measurement itself was the problem. It ignored the main cost of a voucher: the discount given to customers who would have bought anyway. The business-impact analysis now simulates the **incremental margin of each contact** -- recovered margin for would-be churners, discount given away for would-be buyers, minus the contact cost -- and compares lists at the **same expected discount spend** instead of the same number of contacts:
 
-All three revenue measures (`rar_aov`, `rar_v`, `rar_v_orders`) and all three counting schemes (weekly, unique, suppressed) are kept side by side for analysis. The weekly + `rar_aov` combination stays as the reference measurement.
-
-### Solution: rank by Expected Loss
-
-**Expected Loss = calibrated churn probability × `value_v` × expected orders in 90 days**, i.e. the revenue we expect to lose if we do nothing. It uses the same fitted model; only the ranking key changes.
-
-Net impact with suppressed counting and `rar_v_orders`:
-
-| Ranking | K = 2% / week | K = 5% / week |
+| List (Base: 10% voucher, e = 30%, r = 40%, m = 40%) | Contacts / week | Net margin / weekly cohort |
 |---|---|---|
-| **Expected Loss** | **£46,366** | **£65,354** |
-| Recency rule | £20,120 | £41,195 |
-| RFM rule | £17,963 | £38,051 |
-| Random | £15,740 | £38,305 |
-| Churn probability alone | £12,782 | £37,031 |
+| **Highest churn risk** | 826 | **£9,060** |
+| Highest expected margin per contact (value-aware) | 485 | £8,228 |
+| Longest since last purchase | 684 | £6,079 |
+| Random | 605 | £979 |
 
-- Expected Loss is the best ranking at every K from 1% to 5%, under **all three** revenue measures. Its lead under `rar_aov` and `rar_v` is the independent evidence, since `rar_v_orders` is what it was built on.
-- Ranking by churn probability alone is **below random** at K = 1–5% under `rar_v_orders`. This is the clearest quantitative form of Insight 1.
-- Expected Loss catches fewer churners (TP 225 vs 363 at K = 2%), but contacting a non-churner is cheap compared with keeping one high-value churner.
+- Ranking by churn risk adds 49% over the recency rule and leads in all ten test weeks; the result holds for 5%, 10% and 20% vouchers and for 30-50% margins.
+- Adding value does not raise the total at equal spend: high-value customers' vouchers cost more, so the value-aware list reaches fewer people. It stays as the lighter option when contact capacity is limited.
+- Expected Loss was removed from the code, report and score table: it ranks on revenue at risk only and does not price the discount given to would-be buyers.
 
-**Operating rule:** score churn risk with the model, rank by Expected Loss, and contact a small weekly share with 13-week suppression.
+**Operating rule:** rank by churn risk and offer the voucher until the weekly expected discount budget (about £8,200) is used; validate in a pilot with a 20% no-offer control.
 
 ### Where it lives
 
 - [`notebooks/04_modeling.ipynb`](../../notebooks/04_modeling.ipynb): calibration offset and risk bands, saved with the model
-- [`notebooks/05_evaluation.ipynb`](../../notebooks/05_evaluation.ipynb): Measurement Sensitivity, Scenario Analysis, and the `churn_probability_calibrated` and `expected_loss` scoring columns
-- [`report/content/evaluation.tex`](../../report/content/evaluation.tex): Sections 7.2 (revenue at risk), 7.7 (Measurement Sensitivity), 7.8 (Scenario Analysis), 7.9 (Model Comparison); calibration is in Section 6.3 of [`modeling.tex`](../../report/content/modeling.tex)
-- [`report/content/deployment.tex`](../../report/content/deployment.tex): Sections 8.3–8.5
-- [`brief/main.tex`](../../brief/main.tex) and [`slide/main.tex`](../../slide/main.tex): Recommendation
+- [`notebooks/06_business_impact.ipynb`](../../notebooks/06_business_impact.ipynb) (generated by `src/build_nb06.py`): the equal-budget comparison and scenarios
+- [`report/content/evaluation.tex`](../../report/content/evaluation.tex): Chapter 7; [`report/content/targeting_policy.tex`](../../report/content/targeting_policy.tex): the weekly voucher rule (Section 8.3)
+- [`brief/main.tex`](../../brief/main.tex) and [`slide/sections/04_business_impact.tex`](../../slide/sections/04_business_impact.tex)
 
 ---
 
@@ -109,11 +93,11 @@ Net impact with suppressed counting and `rar_v_orders`:
 
 - Keep **upsell** for low-value customers as a recommendation in the report rather than a modeling task.
 
-Related TODO items: `feat/value-aware-targeting` (actions per customer) and `feat/policy-simulation` (policy comparison), see [`TODO.md`](../../TODO.md).
+Related TODO item: the Risk × Value action matrix is still open, see [`TODO.md`](../../TODO.md).
 
 ---
 
 ## Open Items
 
 - Implement the Insight 2 handling: rhythm monitoring for key accounts and the Risk × Value action matrix.
-- Validate the Expected Loss ranking in a pilot campaign with a held-out control group. The dataset has no treatment or control information, so all impact figures are scenario estimates (Section 10.5).
+- Validate the risk-ranked voucher list in a pilot with a held-out control group. The dataset has no treatment or control information, so all impact figures are scenario estimates (report Section 10.3).

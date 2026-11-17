@@ -30,6 +30,21 @@ The raw dataset is a single flat transaction table (not pre-split into separate 
 \end{tabular}
 \end{center}
 
+The eight fields fall into four groups, each with a role in the analysis:
+
+\begin{center}
+\begin{tabular}{@{}p{2.6cm}p{5cm}p{6.8cm}@{}}
+    \toprule
+    Group & Fields & Used to \\
+    \midrule
+    Customer & \texttt{Customer ID}, \texttt{Country} & Identify customers and support segmentation \\
+    Transactions & \texttt{Invoice}, \texttt{InvoiceDate}, \texttt{Quantity}, \texttt{Price} & Build order history and purchase metrics \\
+    Products & \texttt{StockCode}, \texttt{Description} & Measure product diversity and purchase patterns \\
+    Time and labels & \texttt{Customer ID}, \texttt{InvoiceDate}, valid purchases & Create observation windows and define churn in the prediction horizon \\
+    \bottomrule
+\end{tabular}
+\end{center}
+
 \section{Pipeline Column Names}
 \label{sec:3-4}
 
@@ -68,7 +83,7 @@ Three value conventions recur throughout this report and are worth stating once,
 \section{Information Not Available}
 \label{sec:3-6}
 
-The dataset contains transactions only. Product cost, product category hierarchy and margin are not available, and neither is any marketing or campaign information (campaign dates, channels, treatment/control assignment, discounts, voucher or contact costs, campaign outcomes). A production system would ideally collect these; in this report, the related quantities used for business-impact estimation in Chapter~\ref{ch:evaluation} (margin, contact cost, incentive cost, retention effectiveness) are explicit assumptions.
+The dataset contains transactions only. Product cost, product category hierarchy and margin are not available, and neither is any marketing or campaign information (campaign dates, channels, treatment/control assignment, discounts, voucher or contact costs, campaign outcomes). Campaign ROI therefore cannot be measured directly. A production system would ideally collect these; in this report, the quantities used for the business-impact simulation in Chapter~\ref{ch:evaluation} (voucher depth, the share of would-be churners who return because of the offer, the share of would-be buyers who redeem it, gross margin and contact cost) are explicit assumptions.
 
 \section{Analytical Dataset Design}
 \label{sec:3-7}

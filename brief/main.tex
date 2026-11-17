@@ -1,90 +1,84 @@
-\documentclass[a4paper,10pt]{article}
-\usepackage[margin=1.8cm,footskip=0.8cm]{geometry}
+% !LW recipe=lualatex x2
+\documentclass[a4paper,11pt]{article}
+\usepackage[margin=1.9cm,footskip=0.9cm]{geometry}
 \usepackage{fontspec}
 \setmainfont{TeX Gyre Heros}
 \usepackage{microtype}
-\usepackage{graphicx,booktabs,array,tabularx,titlesec,fancyhdr,xcolor}
-\usepackage{enumitem}
-\usepackage[hidelinks]{hyperref}
+\usepackage{booktabs,array,tabularx,titlesec,fancyhdr}
+\usepackage[table]{xcolor}
 \definecolor{navy}{HTML}{172B45}
 \definecolor{muted}{HTML}{536171}
+\definecolor{tint}{HTML}{EFF3F7}
 \setlength{\parindent}{0pt}
-\setlength{\parskip}{0.45em}
-\titleformat{\section}{\fontsize{11.5}{14}\selectfont\bfseries\color{navy}}{}{0pt}{}
-\titlespacing*{\section}{0pt}{0.8em}{0.3em}
-\pagestyle{fancy}\fancyhf{}
-\fancyfoot[L]{\footnotesize\color{muted} Business Data Analytics\enspace |\enspace Executive brief}
-\fancyfoot[R]{\footnotesize\color{muted}\thepage\ / 2}
-\renewcommand{\headrulewidth}{0pt}
-\renewcommand{\footrulewidth}{0.3pt}
-\setlength{\emergencystretch}{2em}
+\setlength{\parskip}{0.58em}
+\titleformat{\section}{\fontsize{12}{15}\selectfont\bfseries\color{navy}}{}{0pt}{}
+\titlespacing*{\section}{0pt}{0.9em}{0.3em}
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\pagestyle{fancy}
+\fancyhf{}
+\renewcommand{\headrulewidth}{0pt}
+\fancyfoot[L]{\fontsize{10}{12}\selectfont\color{muted} Business Data Analytics}
+\fancyfoot[R]{\fontsize{10}{12}\selectfont\color{muted}\thepage\ / 2}
 \begin{document}
-\fontsize{10.2}{12.8}\selectfont
-{\fontsize{9}{11}\selectfont\color{muted}\textbf{EXECUTIVE BRIEF}\hfill 4 November 2026}\par
-\vspace{0.15cm}
-{\fontsize{25}{28}\selectfont\bfseries\color{navy}Who Gets the Discount?}\par
-\vspace{0.08cm}
-{\fontsize{12}{15}\selectfont\color{muted}Choosing which customers to offer a voucher, within a fixed weekly budget}\par
+\raggedright
+\fontsize{10.95}{14}\selectfont
+{\fontsize{10}{12}\selectfont\color{muted}\textbf{EXECUTIVE BRIEF}\hfill 4 November 2026}\par
+\vspace{0.18cm}
+{\fontsize{25}{28}\selectfont\bfseries\color{navy}Profit-Driven Discount Strategy}\par
+{\fontsize{12}{15}\selectfont\color{muted}Allocating a fixed discount budget to improve net margin}\par
 \vspace{0.15cm}{\color{navy}\hrule}\vspace{0.12cm}
 
 \section*{The decision}
-Each week the retailer can send a 10\% discount voucher to some of its customers. A voucher only pays off for a customer who was \emph{about to stop buying} and stays because of it. For a customer who would have bought anyway, it is simply money given away. So the question is not ``who buys a lot?'' but \textbf{``who should get a voucher, given a fixed weekly discount budget?''}
+Each week the retailer can send a 10\% voucher to some of its active customers. The offer can recover sales from customers who would otherwise skip a purchase. Every voucher redeemed by a customer who would have bought anyway reduces the margin on that sale.
 
-\section*{Our answer}
-Every Monday, a statistical model gives each active customer a score: how likely they are to make \emph{no purchase in the next 90 days}. We send the voucher to the highest-scoring customers until the weekly discount budget is used up. With a budget of about \pounds7,700 of discounts per week, that is roughly \textbf{780 customers a week}.
+\section*{Our recommendation}
+Every Monday, rank active customers by their predicted chance of making no purchase in the next 90 days. Offer the voucher to the highest-ranked customers until adding another would exceed the expected discount budget. At about £8,200 per week, that is roughly \textbf{826 customers a week}.
 
-In a simulation on 10 weeks the model had never seen (July--September 2011), this earns \textbf{\pounds8,700 of extra profit} per weekly group over the next 90 days. Picking the customers who have been silent the longest, with the same discount budget, earns \pounds5,800, so the model gives about \textbf{51\% more}. Sending the voucher to everyone costs \pounds33,000 in discounts and earns only \pounds4,400. These are simulated results, not measured sales.
+\section*{Results at the same budget}
+The table averages ten weekly groups from July to September 2011 that were held out from model training. Net margin is the simulated increase over 90 days for each weekly group, compared with sending no offer.
 
-\section*{How we count the money (simple version)}
-We have no data on past vouchers or product costs, so the following are \textbf{assumptions}, tested in a pilot:
-
-\begin{center}
-\small\renewcommand{\arraystretch}{1.12}
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{4.3cm}Y@{}}
-\toprule
-Voucher & 10\% off one order, worth the customer's usual order value $V$ \\
-Customer about to leave & 30\% of them stay and buy because of the voucher \\
-Customer who would buy anyway & 40\% of them use the voucher (we lose the 10\%) \\
-Margin and cost & 40\% gross margin on an order; \pounds0.50 to contact one customer \\
-\bottomrule
-\end{tabularx}
-\end{center}
-
-\textbf{Example, customer with $V=$ \pounds300.} If they were about to leave: 30\% $\times$ \pounds300 $\times$ (40\% margin $-$ 10\% discount) $-$ \pounds0.50 $=$ \textbf{+\pounds26.50}. If they would have bought anyway: $-$40\% $\times$ \pounds300 $\times$ 10\% $-$ \pounds0.50 $=$ \textbf{$-$\pounds12.50}. A good list has many customers of the first kind and few of the second. ``Extra profit'' below adds these numbers up over the customers we picked, using what really happened to them in the following 90 days.
-
-\section*{Results: same discount budget, different ways to pick customers}
-\begin{center}
-\small\setlength{\tabcolsep}{5pt}\renewcommand{\arraystretch}{1.12}
+\begingroup
+\setlength{\tabcolsep}{6pt}\renewcommand{\arraystretch}{1.3}
 \begin{tabularx}{\textwidth}{@{}Yrrr@{}}
 \toprule
-How customers are picked & \shortstack[r]{Discount\\given} & \shortstack[r]{Customers\\contacted} & \shortstack[r]{Extra profit\\in 90 days} \\
+\textbf{How customers are selected} & \shortstack[r]{\textbf{Expected}\\\textbf{discount spend}} & \textbf{Contacts} & \shortstack[r]{\textbf{Simulated increase}\\\textbf{in net margin}} \\
 \midrule
-\textbf{Highest model risk of leaving} & \pounds7,741 & 780 & \textbf{\pounds8,697} \\
-Best balance of risk and order size & \pounds7,732 & 485 & \pounds7,991 \\
-Silent the longest & \pounds7,727 & 638 & \pounds5,762 \\
-Random & \pounds7,671 & 561 & \pounds951 \\
-Everyone & \pounds33,029 & 2,425 & \pounds4,420 \\
+\rowcolor{tint}\textbf{Highest risk of no purchase} & £8,213 & 826 & \textbf{£9,060} \\
+Highest expected margin per contact & £8,219 & 485 & £8,228 \\
+Longest time since last purchase & £8,210 & 684 & £6,079 \\
 \bottomrule
-\end{tabularx}
-\end{center}
-\vspace{-0.1cm}
-{\footnotesize\color{muted}Simulated, compared with sending nothing; per weekly group, averaged over 10 weeks. Each group's profit is counted over the next 90 days, so weekly groups overlap: do not add weeks into a yearly profit.}
+\end{tabularx}\par
+\endgroup
 
-\textbf{What this tells us.} (1) The model is what creates the value: with the same discount, it beats ``silent the longest'' in each of the 10 weeks. (2) Adding order size to the choice does not make more profit with the same discount; it reaches 38\% fewer customers for slightly less profit, so it is the lighter option when each contact is costly. (3) Voucher to everyone wastes most of the discount. In an earlier backtest over four seasons, it lost money at a 20\% discount in three of the four.
+Risk ranking adds \textbf{£2,982 (49\%)} in simulated margin over the longest-inactive rule and leads in all ten test weeks under the stated assumptions.
 
-\section*{Who the offers go to}
-On the list for 5 December 2011 (772 offers), the customer groups come from the RFM segmentation: \textbf{One-time recent} (346), \textbf{Developing} (230) and \textbf{Cooling} (188) get nearly all of the offers and the expected profit. \textbf{Champions and Loyal} get only 7 offers: they mostly buy anyway, and in the test weeks a voucher to a Champion lost about \pounds15 per contact, to a Loyal customer about nothing.
+\section*{One voucher, two outcomes}
+Take a customer who usually spends £300. A 10\% voucher takes £30 off one order. At an assumed 40\% gross margin, that order leaves £120 after product costs, or £90 after the voucher. It costs £0.50 to contact the customer.
 
-\section*{Can we trust it? What to check}
-\begin{itemize}[leftmargin=1.2em,itemsep=0.1em,topsep=0.2em]
-\item \textbf{The model is useful but not perfect.} On the 10 test weeks, the 10\% of customers it ranked most at risk left 1.9 times as often as the average customer.
-\item \textbf{Seasons.} About 61\% of customers stop buying in December--January but only 40\% in July--September, and the model does not know the calendar. Its ranking stays useful; its exact risk numbers are too low in winter and too high in summer.
-\item \textbf{One-time buyers} are 13\% of customers but 44\% of the offer list, and the model is less accurate for them. Pilot results should be reported separately for this group.
-\item \textbf{Big orders.} About 7\% of offers go to customers with average orders above \pounds1,000. Capping order value at \pounds500 lowers the profit of the ``balanced'' list by about a fifth.
-\item \textbf{All the money figures depend on the assumptions above.} If the real margin is below about 20\%, the offers do not pay back. Real product margins should replace our 40\%.
-\end{itemize}
+\textbf{The customer would have skipped buying.} We assume the voucher wins back 30 in every 100 of these customers. Each sale won back brings in £90 after the discount. Spread that gain across everyone contacted and deduct the cost of reaching them. The average gain per contact is \textbf{30\% × £90 − £0.50 = £26.50}.
 
-\section*{Next step: a small pilot}
-Run the rule for 6--8 weeks and keep 20\% of the selected customers as a no-offer control group. Follow every customer for 90 days and compare purchases and profit after discounts between the two groups, separately for one-time and repeat buyers. Expand only if the offer group clearly earns more, the discount stays within budget, and the real response is close to our assumptions (30\% and 40\%).
+\textbf{The customer would have bought anyway.} We assume 40 in every 100 of these customers use the voucher. The retailer makes the same sale and gives up £30 each time the voucher is used. Including the contact cost, the average effect per contact is \textbf{−40\% × £30 − £0.50 = −£12.50}.
+
+To get the \textbf{£9,060} in the table, we repeat this calculation for each selected customer using their usual order value. Their purchase record over the following 90 days tells us which case to use. We add up the gains and losses for each weekly list and take the average across ten weeks.
+
+\newpage
+{\fontsize{21}{25}\selectfont\bfseries\color{navy}From the budget to the pilot}\par
+\vspace{0.14cm}{\color{navy}\hrule}\vspace{0.1cm}
+
+\section*{How we decide how many customers to contact}
+We use the purchase history to model outcomes, but the weekly budget has to be set before those outcomes are known. For the same £30 voucher, suppose the model predicts that 60 out of 100 similar customers would skip buying. Under the assumptions on page one, 18 of those 60 would buy with a voucher. Of the other 40, 16 would use it on a purchase they already planned to make. So we expect \textbf{34 vouchers to be used}, costing £1,020 in total, or \textbf{£10.20 per offer}.
+
+We estimate this cost for each customer, then work down the ranked list until the next offer would exceed the roughly £8,220 budget. Across ten weeks, the risk-ranked lists average \textbf{826 customers and £8,213 in expected discount spend}. We use the same budget for the rule based on time since last purchase. The 485-contact option takes up to 20\% of active customers with the highest positive expected profit per contact. The expected discount spend for that option provides the budget benchmark.
+
+\section*{What we need to verify}
+The analysis explored 5\%, 10\% and 20\% vouchers. The middle scenario is the starting point for the pilot. The records show purchases, and the 30\% recovery and 40\% redemption rates are assumptions. Product costs were also unavailable. At a 30\% gross margin, a £300 order won back would contribute £60 after the voucher. Finance should confirm actual margins before launch.
+
+Each weekly list has a 90-day follow-up. These periods overlap, so the weekly estimates cannot be added as campaign profit.
+
+\section*{Pilot and rollout}
+With a limit of about 500 contacts per week, test the 485-contact option. In the simulation it saves 341 contacts and gives up £833 in additional margin compared with risk ranking.
+
+\textbf{Approve a 6--8 week enrolment period.} Before launch, Finance confirms product margins and the discount cap. Marketing confirms weekly contact capacity. Analytics verifies the risk estimates on data separate from the test weeks and sets the pilot sample size.
+
+Randomly hold back 20\% of selected customers as a no-offer control. Enrol each customer once, keep assignments fixed and follow each customer for 90 days. Compare net contribution per assigned customer after discounts, returns and contact costs. Expand if the offer produces a credible increase over the control group and discount spending stays within the approved cap.
 \end{document}

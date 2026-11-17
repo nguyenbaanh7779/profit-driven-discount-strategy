@@ -1,61 +1,60 @@
 \section{Project Background}
 \label{sec:1-1}
 
-Retail businesses rely on customer relationships and repeat purchases to maintain sustainable revenue. However, customers may gradually reduce their purchasing activity or stop purchasing altogether.
+Retail businesses rely on repeat purchases from existing customers, and a discount is the most common tool to keep a customer who is drifting away. A discount is not free, however. For a customer who would otherwise have stopped buying, a voucher can recover a sale. For a customer who would have bought anyway, the same voucher only reduces the margin on a sale the business would have made without it. Sending vouchers to everyone therefore gives away a large share of the discount budget.
 
-Identifying these customers before they become inactive can be challenging, particularly when businesses have large customer bases and substantial transaction histories. Without an effective way to identify potential churn, businesses may miss opportunities to maintain customer relationships and encourage repeat purchases.
-
-Customer churn prediction can help businesses better understand customer purchasing behavior and identify customers who may be at risk of becoming inactive.
+The retailer in this project can send a 10\% voucher to some of its active customers every week, within a fixed discount budget. The value of the decision lies in choosing \emph{who} receives it: customers likely to stop buying are where a voucher can pay off, and customers who buy regularly are where it mostly costs margin. Customer churn prediction estimates, for every active customer and every week, how likely they are to make no purchase in the coming months, which is exactly the information needed to rank customers for the offer.
 
 \section{Problem Statement}
 \label{sec:1-2}
 
 \begin{itemize}
-    \item \textbf{Difficulty in early identification of churn risk.} Retail businesses struggle to detect customers who are likely to stop purchasing based on historical transaction behavior. Traditional methods often identify inactive customers only after a long period of inactivity, by which time retention opportunities are already limited.
-    \item \textbf{Limited retention resources impacting revenue growth.} The business needs to increase sales revenue but operates under constrained marketing and retention resources. Without a data-driven way to prioritize at-risk customers, retention efforts may be inefficient and fail to maximize revenue.
+    \item \textbf{Who should get a retention discount when the weekly budget is fixed?} Each Monday the retailer must choose whom to contact within a fixed discount budget. A voucher can recover a purchase from a customer who would otherwise stop buying, or subsidise a purchase from a customer who would buy anyway.
+    \item \textbf{Churn has to be detected early, without contracts.} Customers never cancel in retail; they simply stop buying. Traditional methods notice inactive customers only after a long silence, when the chance to keep them is already small, so churn risk has to be inferred from purchase behavior before the customer is gone.
+    \item \textbf{The value of an offer is not observed.} The data contain no past vouchers, margins or campaign results, so the profit of any targeting rule can only be simulated under stated assumptions and must later be confirmed in a pilot.
 \end{itemize}
 
 \section{Research Questions}
 \label{sec:1-3}
 
 \begin{enumerate}
-    \item How can transaction history be converted into customer-level data for churn prediction?
-    \item How well does purchasing behavior predict churn?
-    \item Does churn-risk ranking improve prioritization under limited retention resources compared to rule-based targeting?
+    \item How can transaction history be converted into weekly customer-level data for churn prediction?
+    \item How well does purchasing behavior predict that a customer makes no purchase in the next 90 days?
+    \item At the same expected weekly discount spend, which way of choosing customers adds the most simulated net margin: ranking by churn risk, by expected margin per contact, or by time since the last purchase?
     \item Which customer behaviors are most associated with churn? (Correlation, not causation.)
 \end{enumerate}
 
 \section{Project Objectives}
 \label{sec:1-4}
 
-To develop a data-driven churn prediction model that identifies customers at risk of leaving based on their purchasing history, enabling retail e-commerce businesses to prioritize limited retention resources and maximize sales revenue.
+To develop a \textbf{profit-driven discount strategy}: a churn model that scores every active customer each week, and a decision rule that uses the score to choose which customers receive a discount within a fixed weekly budget, so as to maximise the expected incremental profit relative to sending no offer. The rule is evaluated on unseen test weeks under explicit assumptions, and the report ends with the pilot needed to measure its real effect.
 
 \section{Scope and Limitations}
 \label{sec:1-5}
 
-\textbf{In scope:} existing-customer retention, churn prediction, customer snapshots, weekly batch scoring, risk ranking and Top-K targeting.
+\textbf{In scope:} existing-customer retention, weekly churn scoring of all active customers, budget-constrained discount targeting, and a scenario simulation of its net margin.
 
 \textbf{Out of scope / not claimed:}
 \begin{itemize}
-    \item Causal uplift and incremental campaign revenue -- the transaction data contain no randomized treatment/control information.
-    \item A live deployment. \textbf{Chapters~\ref{ch:deployment} and~\ref{ch:feedback} describe a proposed operational design}; they are not evaluated on a running system.
+    \item Causal uplift and measured campaign revenue -- the transaction data contain no randomized treatment/control information, so every margin figure is a simulation (Chapter~\ref{ch:evaluation}).
+    \item A live deployment. \textbf{Chapter~\ref{ch:targeting-policy} describes a proposed operational design}; it is not evaluated on a running system.
     \item Profit analysis based on real margins or costs -- these are not in the data and enter only as stated assumptions.
 \end{itemize}
 
 \section{Report Structure}
 \label{sec:1-6}
 
-The report is organized into ten chapters:
+The report is organized into ten chapters that follow the decision from the business problem to the recommended policy:
 
 \begin{enumerate}
     \item \textbf{Introduction} -- background, problem statement, research questions, objectives and scope.
-    \item \textbf{Problem Statement and Approach} (Chapter~\ref{ch:problem-approach}) -- the business problem, objectives and success criteria, and the analytical approach used to address them.
-    \item \textbf{Dataset and Data Specification} (Chapter~\ref{ch:dataset}) -- the Online Retail II dataset, its characteristics and limitations, and its schema and conventions.
-    \item \textbf{Data Understanding} (Chapter~\ref{ch:data-understanding}) -- exploratory analysis of sales, customers and purchasing behavior, and the feasibility of churn prediction.
-    \item \textbf{Data Preparation} (Chapter~\ref{ch:data-preparation}) -- cleaning, customer snapshots, features, churn labels and the temporal split.
-    \item \textbf{Modeling} (Chapter~\ref{ch:modeling}) -- baselines, feature sets, algorithms, tuning and interpretability.
-    \item \textbf{Evaluation} (Chapter~\ref{ch:evaluation}) -- predictive, ranking and business-impact evaluation on the unseen test period.
-    \item \textbf{Deployment} (Chapter~\ref{ch:deployment}) -- the proposed weekly scoring design.
-    \item \textbf{Feedback} (Chapter~\ref{ch:feedback}) -- monitoring and retraining.
-    \item \textbf{Conclusion} (Chapter~\ref{ch:conclusion}) -- summary, limitations and future work.
+    \item \textbf{Problem Statement and Approach} (Chapter~\ref{ch:problem-approach}) -- the discount decision, its success criteria, and the analytical approach.
+    \item \textbf{Dataset and Data Specification} (Chapter~\ref{ch:dataset}) -- the Online Retail II dataset, its fields, conventions and limitations.
+    \item \textbf{Data Understanding} (Chapter~\ref{ch:data-understanding}) -- revenue and customers, the purchase rhythm behind the churn definition, and the customer segments.
+    \item \textbf{Data Preparation} (Chapter~\ref{ch:data-preparation}) -- cleaning, weekly populations, churn labels, features and the embargoed temporal split.
+    \item \textbf{Modeling} (Chapter~\ref{ch:modeling}) -- model selection, tuning and the evaluation of the final model on the test weeks.
+    \item \textbf{Evaluation} (Chapter~\ref{ch:evaluation}) -- the business impact of each way of choosing customers at the same discount budget.
+    \item \textbf{Targeting Policy and Decision Support} (Chapter~\ref{ch:targeting-policy}) -- the weekly decision cycle, the score table, the dashboard and monitoring.
+    \item \textbf{Robustness, Ethics and Limitations} (Chapter~\ref{ch:robustness}) -- how far the result depends on the assumptions, the season and customer groups.
+    \item \textbf{Conclusion and Recommendations} (Chapter~\ref{ch:conclusion}) -- the recommended weekly policy and the pilot that decides whether to scale.
 \end{enumerate}

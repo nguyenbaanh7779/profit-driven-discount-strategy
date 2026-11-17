@@ -1,0 +1,45 @@
+% Business impact at an equal discount budget. Numbers: notebooks/06_business_impact.ipynb.
+\section{Business Impact}
+
+\begin{frame}{Business impact}{Churn-risk ranking adds the most net margin at equal discount spend (10 held-out weeks, Jul--Sep 2011)}
+  \vspace{0.3cm}
+  \centering
+  \renewcommand{\arraystretch}{1.3}
+  \begin{tabular}{@{}lrrr@{}}
+    \toprule
+    \textbf{How customers are selected} & \textbf{\shortstack[r]{Expected discount\\spend}} & \textbf{Contacts} & \textbf{\shortstack[r]{Simulated increase\\in net margin}} \\
+    \midrule
+    \textbf{Highest risk of no purchase} & \pounds8,213 & 826 & \textbf{\pounds9,060} \\
+    Highest expected margin per contact & \pounds8,219 & 485 & \pounds8,228 \\
+    Longest since last purchase & \pounds8,210 & 684 & \pounds6,079 \\
+    \bottomrule
+  \end{tabular}
+
+  \vspace{0.8cm}
+  \raggedright
+  {\large Risk ranking adds \textcolor{hustred}{\textbf{\pounds2,982 (49\%)}} in simulated margin over the longest-inactive rule and leads in all ten test weeks under the stated assumptions.\par}
+  \vspace{2pt}
+  {\small\color{inkgray}Each cohort has a 90-day outcome window. Margin is relative to no offer.\par}
+\end{frame}
+
+\begin{frame}{Simulation method}{How the simulation turns offers into incremental profit}
+  \vspace{0.2cm}
+  \begin{block}{For each customer on the list}
+    Expected profit = gross profit on purchases recovered by the offer $-$ discounts on all redeemed orders $-$ contact cost.
+  \end{block}
+  \vspace{0.3cm}
+  \begin{columns}[T]
+    \column{.48\textwidth}
+    {\large\bfseries Base-case assumptions\par}
+    \vspace{6pt}
+    {10\% discount, 40\% gross margin and \pounds0.50 per contact.\par}
+    \vspace{6pt}
+    {The offer recovers 30\% of would-be churners. Among customers who would buy anyway, 40\% redeem it.\par}
+    \column{.48\textwidth}
+    {\large\bfseries From customer scores to the table\par}
+    \vspace{6pt}
+    {Add expected profit over the selected customers each week and average across the 10 test weeks.\par}
+    \vspace{6pt}
+    {For the highest-risk list, \pounds9,060 divided by \pounds8,213 gives \textbf{\pounds1.10 per \pounds1 of discount}.\par}
+  \end{columns}
+\end{frame}

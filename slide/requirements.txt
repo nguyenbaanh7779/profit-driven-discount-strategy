@@ -6,3 +6,5 @@ pgf
 pgfopts
 tex-gyre
 lato
+colortbl
+tools

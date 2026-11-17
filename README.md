@@ -1,23 +1,28 @@
-# Customer Churn Prediction (Online Retail II)
+# Profit-Driven Discount Strategy (Online Retail II)
 
-Customer churn prediction and retention marketing targeting analysis using the UCI Online Retail II dataset.
+Customer churn prediction and budget-constrained retention targeting on the UCI Online Retail II dataset.
 
 ## Overview
 
-This project builds a system to predict whether an existing customer is likely to become inactive within a defined future period, so that a marketing team can prioritize retention spend on the customers most at risk of churning. Three targeting strategies are compared: a random/no-model baseline, a rule-based RFM approach, and a machine-learning model trained on customer purchase history.
+Each Monday an online retailer can send a 10% retention voucher to some of its active customers, within a fixed discount budget. A voucher can recover a purchase from a customer who would otherwise stop buying, or subsidise a purchase from a customer who would have bought anyway. The project answers **who should get the discount**:
 
-The full write-up — business understanding, data preparation, modeling, and evaluation — lives in [`report/`](report/) as a LaTeX report (`report/main.tex`). A 2-page executive summary is in [`brief/`](brief/), and a slide deck is in [`slide/`](slide/).
+1. a churn model scores every active customer each week (probability of no purchase in the next 90 days);
+2. customers are ranked by that risk and offered the voucher until the weekly expected discount budget is used;
+3. on ten held-out weeks (Jul–Sep 2011), this list adds 49% more simulated net margin than picking the customers silent the longest, at the same discount spend.
+
+The margin figures are simulations under stated assumptions (no campaign data exist); the recommended next step is a randomised pilot with a no-offer control group.
 
 ## Repository Structure
 
 ```
 data/raw/        Raw Online Retail II transactions (parquet, gitignored)
 data/processed/  Modeling dataset (gitignored)
-data/results/    Scores, action table, policy results (gitignored)
-notebooks/       Analysis notebooks, run in order (below)
-src/             policy_lib.py (shared helpers), build_nb*.py (generate notebooks 10-13), make_brief_figures.py, make_rfm8.py
+data/results/    Score table, action table, budget comparison (gitignored)
+models/          Final model with calibration offset and risk bands (gitignored)
+notebooks/       Analysis notebooks 01-07, run in order (below)
+src/             policy_lib.py (simulation helpers), build_nb06.py / build_nb07.py (generate notebooks 06-07), make_rfm8.py (dashboard segments)
 dashboard/       Streamlit dashboard
-docs/            data_dictionary.md (with source log), model_card.md, findings, strategy, guide/ (setup), insights/ (business insights)
+docs/            data_dictionary.md (with source log), model_card.md, insights/, strategy/, guide/ (setup)
 report/          LaTeX source for the full project report
 brief/           LaTeX source for the 2-page executive brief
 slide/           LaTeX (Beamer) source for the presentation deck
@@ -30,42 +35,40 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Setup and LaTeX instructions: [docs/guide/README.md](docs/guide/README.md).
+Raw data (`online_retail_II.xlsx` or its parquet copy) goes in `data/raw/`; notebooks 01 and 03 create the parquet from the Excel file if it is missing. Setup and LaTeX instructions: [docs/guide/README.md](docs/guide/README.md).
 
 ## Run order
 
-| Step | Notebook | Output |
-|---|---|---|
-| 1 | `00_explore_data` | raw parquet from the Excel files |
-| 2 | `06_data_understanding` | EDA, value concentration |
-| 3 | `07_data_preparation` | `data/processed/modeling_dataset_h90.parquet` |
-| 4 | `08_modeling`, `09_evaluation` | model and uncalibrated scores |
-| 5 | `10_policy_analysis` | policy comparison, sensitivity (train-only predictions) |
-| 6 | `11_rolling_backtest` | four expanding-window folds |
-| 7 | `12_action_table` | `customer_scores_actions_h90.parquet`, test policy table |
-| 8 | `13_equal_budget` | equal-discount-budget comparison and one-at-a-time scenarios |
+| Step | Notebook | Output | Used in |
+|---|---|---|---|
+| 1 | `01_data_understanding` | EDA figures in `report/figures/` | Report Ch. 4, slides *Data Understanding* |
+| 2 | `02_customer_segments` | six behaviour groups, `report/figures/ch4_customer_segments.png` | Report 4.6, slide *Customer segments* |
+| 3 | `03_data_preparation` | `data/processed/modeling_dataset_h90.parquet` | Report Ch. 5, slides *Data preparation*, *Data split* |
+| 4 | `04_modeling` | `models/churn_model_h90.joblib` | Report Ch. 6, slides *Model experiment*, *Model evaluation* |
+| 5 | `05_scoring` | `data/results/churn_scores_h90.parquet` | Report 7.6 and 8.4 |
+| 6 | `06_business_impact` | `data/results/budget_comparison.csv`, scenario tables, `report/figures/ch7_equal_budget_weekly.png` | Report Ch. 7, slides *Business Impact*, brief |
+| 7 | `07_action_table` | `data/results/customer_scores_actions_h90.parquet` | Report 8.3-8.4, dashboard |
 
-**Input outside the notebooks:** `data/results/churn_scores_h90_calibrated.parquet` (calibrated probabilities) was delivered by the modeling team and is read by notebook 12; no notebook here produces it. Notebooks 10-13 are generated by `python src/build_nb<N>.py` and executed with `jupyter nbconvert --execute`.
-
-Brief figure: `python src/make_brief_figures.py` (after notebook 13).
-Dashboard segments: `python src/make_rfm8.py` (writes `data/results/rfm8_segments.parquet`, needs notebook 12 output) before `streamlit run dashboard/app.py`.
+Notebooks 06 and 07 are generated by `python src/build_nb06.py` and `python src/build_nb07.py` (run from the repo root), then executed in `notebooks/`, e.g. `jupyter execute --inplace 06_business_impact.ipynb`.
 
 ## Dashboard
 
 ```bash
+python src/make_rfm8.py          # after notebook 07: weekly behaviour segments
 streamlit run dashboard/app.py
 ```
 
-Needs the files from steps 3 and 7. Details in [dashboard/README.md](dashboard/README.md).
+Details in [dashboard/README.md](dashboard/README.md).
 
 ## Deliverables
 
-- Executive brief: `brief/main.tex` (compile with XeLaTeX)
+- Report: `report/main.tex` (XeLaTeX)
+- Executive brief: `brief/main.tex` (LuaLaTeX)
+- Slide deck: `slide/main.tex` (LuaLaTeX, HUST theme)
 - Dashboard: `dashboard/`
 - Data dictionary and source log: [docs/data_dictionary.md](docs/data_dictionary.md)
 - Model card: [docs/model_card.md](docs/model_card.md)
-- Findings behind the policy numbers: [docs/findings_policy_analysis.md](docs/findings_policy_analysis.md)
 
 ## Status
 
-Pipeline, policy analysis, brief and dashboard are in place. Open: confirm how the calibration offset was fitted, and check results by country.
+Pipeline, business-impact simulation, brief, slides and dashboard are in place. Open: run the pilot to measure the real response and redemption rates, and check results by country.

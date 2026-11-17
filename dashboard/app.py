@@ -2,7 +2,7 @@
 
 Run from the repo root:  streamlit run dashboard/app.py
 Reads data/results/customer_scores_actions_h90.parquet, recency_days from the modeling
-dataset, and the 8 RFM segments (src/make_rfm8.py, rules from output/02_rfm_segmentation.ipynb). No model is retrained here.
+dataset, and the 8 RFM segments (src/make_rfm8.py, rules from notebooks/02_customer_segments.ipynb). No model is retrained here.
 """
 import sys
 from pathlib import Path
@@ -104,7 +104,7 @@ cur = df[df.snapshot_date == last_date].copy()
 # ---- sidebar: two controls only --------------------------------------------
 sb = st.sidebar
 sb.markdown("## Weekly discount budget")
-budget = float(sb.slider("Expected discount cost per week (£)", 1000, 20000, 7740, 20, label_visibility="collapsed"))
+budget = float(sb.slider("Expected discount cost per week (£)", 1000, 20000, 8220, 20, label_visibility="collapsed"))
 sb.markdown("## Offer scenario")
 preset = sb.selectbox("Preset (discount, response)", list(PRESETS), index=1, label_visibility="collapsed")
 d0, e0 = PRESETS[preset]
