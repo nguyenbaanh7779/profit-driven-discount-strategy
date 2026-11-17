@@ -1,5 +1,5 @@
 % !LW recipe=lualatex x2
-\documentclass[aspectratio=169,10pt]{beamer}
+\documentclass[aspectratio=169,10pt,xcolor=table]{beamer}
 
 % ============================================================
 % Official HUST Beamer theme (red, 16:9), vendored in hust-beamer/
@@ -21,6 +21,7 @@
   progressbar=on,
   footermeta=on,
   dateaddress=off,
+  footerdate={05/11/2026},
   toctitle={Outline},
   reftitle={References}
 ]{HUST}
@@ -29,23 +30,41 @@
 % The theme draws with these TikZ libraries; its optional hust-setup.tex
 % (not used here) would otherwise load them.
 \usetikzlibrary{calc, decorations.markings, arrows.meta}
+% Wider cover text block, so the subtitle stays on one line
+\makeatletter
+\hust@param{coverTextW}{0.7000}{0.8030}
+\makeatother
 
-% ---- Shared macros: numbered card, stat tile ----
+% ---- Shared colours and macros ----
 \definecolor{cardgray}{HTML}{F2F2F2}
 \definecolor{inkgray}{HTML}{55585B}
 
+% Numbered circle used on the preparation cards
 \newcommand{\cardbadge}[1]{\tikz[baseline=-0.65ex]{\node[circle, fill=hustcrimson, text=white, font=\bfseries\small, inner sep=0pt, minimum size=20pt] {#1};}}
 
-\newcommand{\card}[3]{%
-  \begin{tikzpicture}
-    \node[rounded corners=6pt, fill=cardgray, inner sep=8pt, text width=3.3cm, align=left, anchor=north west] {%
-      \cardbadge{#1}\\[6pt]
-      {\bfseries\small\color{hustcrimson} #2}\\[3pt]
-      {\scriptsize\color{inkgray} #3}%
-    };
+% Rounded card, top-aligned: \infocard[fill]{width}{height}{content}
+\newcommand{\infocard}[4][cardgray]{%
+  \begin{tikzpicture}[baseline=(c.north)]
+    \node (c) [fill=#1, rounded corners=5pt, inner sep=7pt] {\parbox[t][#3][t]{#2}{\raggedright #4}};
   \end{tikzpicture}%
 }
 
+% Rounded card with natural height: \infobox[fill]{width}{content}
+\newcommand{\infobox}[3][cardgray]{%
+  \begin{tikzpicture}[baseline=(c.north)]
+    \node (c) [fill=#1, rounded corners=5pt, inner sep=7pt] {\parbox[t]{#2}{\raggedright #3}};
+  \end{tikzpicture}%
+}
+
+% Note box with an amber bar on the left: \notebox{width}{content}
+\newcommand{\notebox}[2]{%
+  \begin{tikzpicture}[baseline=(c.north)]
+    \node (c) [fill=hustamber!14, inner sep=7pt] {\parbox[t]{#1}{\raggedright #2}};
+    \draw[hustamber, line width=3pt] ([xshift=1.5pt]c.north west) -- ([xshift=1.5pt]c.south west);
+  \end{tikzpicture}%
+}
+
+% Number tile used on the model evaluation slide
 \newcommand{\stattile}[2]{%
   \begin{tikzpicture}
     \node[rounded corners=6pt, fill=cardgray, inner sep=6pt, minimum width=2.9cm, align=center] {%
@@ -57,28 +76,39 @@
   \end{tikzpicture}%
 }
 
-\title[Customer Churn Prediction]{Customer Churn Prediction}
-\subtitle{Value-aware targeting for retention marketing on Online Retail II}
-\author[Group 3]{Group 3}
+\title[Profit-Driven Discount Strategy]{Profit-Driven Discount Strategy}
+\subtitle{Choosing which customers receive a discount to maximise expected profit}
+\author[Group 4]{Group 4}
 \institute{Business Data Analytics\\Hanoi University of Science and Technology}
-\date{November 2026}
+\date{05/11/2026}
 
 \begin{document}
 
 \hustsetup{slogantext={}}
 \begin{frame}[plain,noframenumbering]
   \titlepage
+  \begin{tikzpicture}[remember picture, overlay]
+    \node[anchor=north west, align=left, inner sep=0pt, font=\small, text=hustblack]
+      at ([xshift=0.0317\paperwidth, yshift=-0.705\paperheight] current page.north west) {%
+        \textbf{Instructor:} Nguyễn Bình Minh\\
+        \textbf{Group members:}\\
+        Nguyễn Bá Anh -- 20261218M\\
+        Nguyễn Tiến Khương -- 20261220M\\
+        Nguyễn Trọng Huy Hoàng -- 20251191M\\
+        Nguyễn Tuệ Lâm -- 20261207M};
+  \end{tikzpicture}
 \end{frame}
 
 \begin{frame}[noprogressbar]{\husttoctitle}{\husttocsubtitle}
   \tableofcontents[hideallsubsections]
 \end{frame}
 
-% One file per part, so each presenter edits their own.
+% One file per part of the talk.
 \input{sections/01_business_problem}
-\input{sections/02_data_and_model}
-\input{sections/03_business_impact}
-\input{sections/04_conclusion}
+\input{sections/02_data_understanding}
+\input{sections/03_churn_prediction_model}
+\input{sections/04_business_impact}
+\input{sections/05_recommendation}
 
 \begin{hustdarkframe}
   \centering

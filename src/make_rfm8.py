@@ -1,5 +1,6 @@
-"""Assign Lam's 8 RFM segments (output/02_rfm_segmentation.ipynb, part B) to every
-(customer, snapshot) in the score table. Writes data/results/rfm8_segments.parquet.
+"""Assign Lam's 8 RFM segments (rules of notebooks/02_customer_segments.ipynb, Section 4.6.3)
+to every (customer, snapshot) in the score table, using each customer's history up to that
+Monday. Run after notebook 07; writes data/results/rfm8_segments.parquet for the dashboard.
 Rules copied from the notebook: R<=90 active; M >= weekly top-10% = high value; F>=4 loyal; F 2-3 developing;
 90<R<=180 Cooling; 180<R<=365 Lapsed; R>365 Dormant. Sales = Quantity>0 & Price>0, returns = 'C' invoices."""
 from pathlib import Path

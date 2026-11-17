@@ -63,7 +63,7 @@ The final model is \textbf{Logistic Regression, Extended feature set, $C = 0.01$
 
 The final model is scored once on the 10 test weeks; nothing here feeds back into a choice.
 
-\textbf{Calibration.} Weighting each customer equally lifts the effective churn rate of the training rows to 62.0\% (50.0\% unweighted), so the raw probabilities overestimate risk on unweighted rows: on the refit pool itself they average 55.1\% against a churn rate of 50.0\%. A single log-odds offset $\delta$ is therefore fitted on the refit pool so that the mean calibrated probability equals its churn rate, $\text{logit}_{\text{cal}} = \text{logit}_{\text{raw}} - \delta$ with $\delta = 0.259$. The textbook prior correction $\text{logit}(0.620) - \text{logit}(0.500) = 0.489$ would overshoot (mean 45.4\% on the same rows), because the weights change the mix of customers, not only the base rate. The offset uses training data only and is monotonic -- AUC and every ranking are unchanged -- and the calibrated probability is what the Brier score below and Expected Loss (Chapter~\ref{ch:evaluation}) use.
+\textbf{Calibration.} Weighting each customer equally lifts the effective churn rate of the training rows to 62.0\% (50.0\% unweighted), so the raw probabilities overestimate risk on unweighted rows: on the refit pool itself they average 55.1\% against a churn rate of 50.0\%. A single log-odds offset $\delta$ is therefore fitted on the refit pool so that the mean calibrated probability equals its churn rate, $\text{logit}_{\text{cal}} = \text{logit}_{\text{raw}} - \delta$ with $\delta = 0.259$. The textbook prior correction $\text{logit}(0.620) - \text{logit}(0.500) = 0.489$ would overshoot (mean 45.4\% on the same rows), because the weights change the mix of customers, not only the base rate. The offset uses training data only and is monotonic -- AUC and every ranking are unchanged -- and the calibrated probability is what the Brier score below and the expected discount cost and margin of Chapter~\ref{ch:evaluation} use.
 
 \textbf{Risk bands.} Ten bands with fixed cut-offs at the validation-period deciles of the calibrated probability, so each band holds 10\% of validation customers and band membership is comparable across weeks.
 
@@ -90,7 +90,7 @@ Each scoring week is evaluated on four checks: \textbf{AUC} (separation), \textb
 \end{tabular}
 \end{center}
 
-Separation holds up out of sample: weekly AUC stays between 0.744 and 0.773 (0.780 on validation), and the Brier score stays at 0.192--0.197. HHI stays close to its 0.10 floor, so the model keeps spreading customers across all ten bands rather than piling them into a few. CSI, however, \textbf{rises steadily}, from 0.084 to 0.138, and stays above the 0.10 ``moderate shift'' line from 2011-08-08: as the test period's churn rate falls (44.4\% to 34.8\%), more customers move into the low-risk bands. AUC drifts down with it. Neither is a failure, but together they are the signal the monitoring of Section~\ref{sec:8-6} is designed to catch, and a reason to refit on more recent data.
+Separation holds up out of sample: weekly AUC stays between 0.744 and 0.773 (0.780 on validation), and the Brier score stays at 0.192--0.197. HHI stays close to its 0.10 floor, so the model keeps spreading customers across all ten bands rather than piling them into a few. CSI, however, \textbf{rises steadily}, from 0.084 to 0.138, and stays above the 0.10 ``moderate shift'' line from 2011-08-08: as the test period's churn rate falls (44.4\% to 34.8\%), more customers move into the low-risk bands. AUC drifts down with it. Neither is a failure, but together they are the signal the monitoring of Section~\ref{sec:8-7} is designed to catch, and a reason to refit on more recent data.
 
 \textbf{Gain table.} Test rows (customer-weeks) split into ten equal deciles of the final model's predicted probability, highest risk first; lift is the decile's churn rate over the test churn rate of 40.1\%:
 
@@ -121,7 +121,7 @@ Churn rate falls strictly from the top decile to the bottom one -- a 16$\times$ 
 \includegraphics[width=0.55\textwidth]{figures/ch9_calibration_curve.png}
 \end{center}
 
-On the whole test period, the raw probabilities (blue) sit below the diagonal almost everywhere (Brier 0.198; mean prediction 0.468 against a churn rate of 0.401). After calibration (orange), the curve follows the diagonal closely, the Brier score falls to 0.194 and the mean prediction to 0.418. The small remaining overestimate is the test period's own lower churn rate (40.1\% vs.\ 50.0\% on the refit pool), which no calibration fitted before the test period can anticipate; Section~\ref{sec:8-6} recalibrates for it.
+On the whole test period, the raw probabilities (blue) sit below the diagonal almost everywhere (Brier 0.198; mean prediction 0.468 against a churn rate of 0.401). After calibration (orange), the curve follows the diagonal closely, the Brier score falls to 0.194 and the mean prediction to 0.418. The small remaining overestimate is the test period's own lower churn rate (40.1\% vs.\ 50.0\% on the refit pool), which no calibration fitted before the test period can anticipate; Section~\ref{sec:8-7} recalibrates for it.
 
 \begin{center}
 \includegraphics[width=0.85\textwidth]{figures/ch8_shap_summary.png}

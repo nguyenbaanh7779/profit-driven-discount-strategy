@@ -15,7 +15,7 @@
 }
 \newcommand{\steparrow}{\raisebox{-2.2cm}{\color{hustcrimson}\Large$\rightarrow$}}
 
-\begin{frame}{From transactions to a weekly modeling table}{One row per customer per Monday, built only from information up to that date}
+\begin{frame}{Data preparation}{One row per customer per Monday, built only from information up to that date}
   \vspace{0.4cm}
   \centering
   \prepstep{1}{Clean}{72.8\%}{of raw rows kept}%
@@ -30,7 +30,7 @@
   {\scriptsize\color{inkgray} Active $=$ bought before and last purchase $\leq$ 136 days ago (P90 repurchase gap).}
 \end{frame}
 
-\begin{frame}{Leakage-safe temporal split}{Chronological periods, with a 90-day embargo so no label window reaches the next period}
+\begin{frame}{Data split}{Chronological periods, with a 90-day embargo so no label window reaches the next period}
   \centering
   \includegraphics[width=0.92\textwidth]{figures/split_timeline.png}
 
@@ -50,35 +50,33 @@
   {\scriptsize\color{inkgray} A 6-month warm-up precedes the first snapshot so every customer has some history. The churn rate moves with the season between periods.}
 \end{frame}
 
-\begin{frame}{Model selection and tuning on validation}{Final: Logistic Regression $\cdot$ Extended features (8) $\cdot$ $C = 0.01$ $\cdot$ refit on train $+$ validation}
-  \vspace{0.2cm}
-  \begin{columns}[t]
-    \column{.58\textwidth}
-    \footnotesize
+\begin{frame}{Model experiment}{Final: Logistic Regression $\cdot$ Extended features (8) $\cdot$ $C = 0.01$ $\cdot$ refit on train $+$ validation}
+  \begin{columns}[T]
+    \column{.63\textwidth}
+    \small
+    \renewcommand{\arraystretch}{1.08}
     \begin{tabular}[t]{@{}llccc@{}}
       \toprule
-      Step & Candidate & AUC & Brier & \\
+      \textbf{Step} & \textbf{Candidate} & \textbf{AUC} & \textbf{Brier} & \\
       \midrule
       Baselines & Random & 0.495 & -- & \\
        & Recency rule & 0.673 & -- & \\
-      \midrule
       Training rows & A -- Episode sample & 0.774 & 0.226 & \\
        & B -- All weekly, weighted $1/n_i$ & \textbf{0.781} & \textbf{0.214} & \checkmark \\
-      \midrule
       Features & RFM (3) & 0.778 & 0.218 & \\
        & Extended (8) & \textbf{0.781} & \textbf{0.214} & \checkmark \\
        & Full (11) & 0.781 & 0.214 & \\
-      \midrule
       Algorithm & Logistic Regression & \textbf{0.781} & \textbf{0.214} & \checkmark \\
        & Random Forest & 0.770 & 0.222 & \\
        & XGBoost & 0.756 & 0.238 & \\
       \bottomrule
     \end{tabular}
-    \column{.36\textwidth}
-    \footnotesize
-    \begin{tabular}[t]{@{}lccc@{}}
+    \column{.35\textwidth}
+    \small
+    \renewcommand{\arraystretch}{1.08}
+    \begin{tabular}[t]{@{}lccl@{}}
       \toprule
-      $C$ (L2) & AUC & Brier & Tied? \\
+      \textbf{$C$ (L2)} & \textbf{AUC} & \textbf{Brier} & \textbf{Tied?} \\
       \midrule
       0.001 & 0.775 & 0.213 & no \\
       0.003 & 0.777 & 0.210 & no \\
@@ -90,7 +88,7 @@
   \end{columns}
 \end{frame}
 
-\begin{frame}{Model evaluation on test}{Scored once on the 10 test weeks with calibrated probabilities}
+\begin{frame}{Model evaluation}{Scored once on the 10 test weeks with calibrated probabilities}
   \centering
   \stattile{0.744--0.773}{AUC per week}\hfill
   \stattile{0.194}{Brier score}\hfill

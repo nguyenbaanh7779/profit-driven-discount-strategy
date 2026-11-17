@@ -1,0 +1,10 @@
+fontspec
+geometry
+microtype
+xcolor
+colortbl
+booktabs
+tools
+titlesec
+fancyhdr
+tex-gyre

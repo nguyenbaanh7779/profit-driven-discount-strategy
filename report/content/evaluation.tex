@@ -1,270 +1,139 @@
 \section{Evaluation Framework}
 \label{sec:7-1}
 
-This chapter estimates the \textbf{business value} of targeting with the final model of Chapter~\ref{ch:modeling}, whose detection quality is reported in Section~\ref{sec:6-quality}. All evaluation uses the \textbf{Scoring Population}: every active customer at every weekly test date (10 weeks, 2011-07-04 -- 2011-09-05, 24,252 rows). The same customer appears in several consecutive weeks, so uncertainty is reported across weeks rather than as if rows were independent. Repeat customers make up 86.7\% of test rows and one-time customers 13.3\%; segment-level error rates are in Section~\ref{sec:7-12}. The historical data contain no campaigns, so suppression is not part of the data; Section~\ref{sec:7-sens} simulates it -- removing customers contacted in the previous $S = 13$ weeks -- as one of three ways to count a weekly campaign.
+This chapter answers the business question of Section~\ref{sec:2-5}: \textbf{who should get a retention discount when the weekly budget is fixed?} The final model of Chapter~\ref{ch:modeling}, whose detection quality is reported in Section~\ref{sec:6-quality}, is used to rank customers, and its value is measured as the simulated net margin of the resulting offer list, compared with sending no offer.
 
-\textbf{Candidates.} Besides the final model and the three baselines (recency rule, RFM rule, random), this chapter evaluates a value-aware ranking, \textbf{Expected Loss} $=$ calibrated churn probability $\times$ revenue at risk ($V \times$ expected orders, Section~\ref{sec:7-5}). It uses the same fitted model; only the ranking key changes, from ``who is most likely to leave'' to ``whose departure would cost the most''.
+\textbf{Population.} Every active customer at every weekly test date: 10 weeks, 2011-07-04 -- 2011-09-05, 24,252 rows or about 2,425 active customers per week, 86.7\% of them repeat and 13.3\% one-time customers. The calibrated churn probability $p$ comes from the score table of Section~\ref{sec:8-4} (mean 0.418 against an observed churn rate of 0.401), and the customer value $V$ is the capped average order value of Section~\ref{sec:5-5}. The historical data contain no campaigns, so no customer is under suppression and every active row is in the Scoring Population.
 
-\section{Customer Revenue at Risk}
-\label{sec:7-5}
-
-Estimate the future revenue a churner's departure would cost, using history up to the snapshot date only. These are estimates of revenue exposure, not observed lost revenue. Three measures are compared throughout:
-
-\begin{center}
-\begin{tabular}{@{}p{2.6cm}p{5.6cm}p{6cm}@{}}
-    \toprule
-    Measure & Definition & Rationale \\
-    \midrule
-    \texttt{rar\_aov} & One future purchase at the raw average order value so far & The reference measure of earlier versions \\
-    \texttt{rar\_v} & One future purchase at the capped value $V$ (Section~\ref{sec:5-5}) & A handful of wholesale-sized accounts cannot dominate \\
-    \texttt{rar\_v\_orders} & $V \times \text{clip}(H / \text{mean gap so far},\ 1,\ 13)$ & Losing a frequent buyer costs more orders within $H$ than losing an occasional one; one-time customers count one order \\
-    \bottomrule
-\end{tabular}
-\end{center}
-
-\begin{center}
-\begin{tabular}{@{}p{3.6cm}p{1.8cm}p{1.8cm}p{1.8cm}p{2.2cm}@{}}
-    \toprule
-    Measure & Mean & Median & 75th pct. & Max \\
-    \midrule
-    \texttt{rar\_aov} & 395.70 & 303.58 & 438.93 & 14,844.77 \\
-    \texttt{rar\_v} & 373.69 & 303.58 & 438.93 & 1,956.84 \\
-    Expected orders in $H$ & 2.07 & 1.20 & 2.20 & 13.00 \\
-    \texttt{rar\_v\_orders} & 832.85 & 448.88 & 844.24 & 25,438.92 \\
-    \bottomrule
-\end{tabular}
-\end{center}
-
-Capping only affects the tail (the median is unchanged), but the order-count factor more than doubles the mean exposure and spreads it widely: a customer buying every week can carry 13 times the exposure of a one-time buyer with the same basket.
-
-\section{Business Impact Scenario}
-\label{sec:7-6}
-
-For a target share $K$, per scoring week: customers targeted ($N_K$), true churners captured ($TP_K$), non-churners targeted ($FP_K$), Recall@K, and revenue at risk among targeted churners. Sections~\ref{sec:7-6}--\ref{sec:7-9} keep the \textbf{reference measurement} of earlier versions -- weekly counting, \texttt{rar\_aov} -- so the funnel stays readable; Section~\ref{sec:7-sens} shows how much the answer depends on both choices.
-
-At $K=10\%$, summed across the 10 test weeks (so $N_K$ counts weekly targeting instances, not unique customers -- the same customer can be targeted in more than one week):
-
-\begin{center}
-\begin{tabular}{@{}p{2.8cm}p{1.6cm}p{1.6cm}p{1.6cm}p{2.8cm}@{}}
-    \toprule
-    Candidate & $N_K$ & $TP_K$ & $FP_K$ & Revenue at risk \\
-    \midrule
-    Final model & 2,427 & 1,831 & 596 & 406,981.23 \\
-    Expected Loss & 2,427 & 1,132 & 1,295 & 1,165,360.89 \\
-    RFM rule & 2,427 & 1,732 & 695 & 499,916.48 \\
-    Recency rule & 2,427 & 1,521 & 906 & 538,397.09 \\
-    Random & 2,427 & 986 & 1,441 & 330,372.57 \\
-    \bottomrule
-\end{tabular}
-\end{center}
-
-$N_K$ is identical across candidates by construction (same $K$, same weekly population); $TP_K$ and revenue at risk are not -- the final model captures the most churners, but the two baselines happen to target higher-average-order-value customers, so they show \emph{more} revenue at risk despite capturing fewer churners. Expected Loss pushes this to the extreme: the fewest churners of the four learned/rule-based rankings, but almost three times the final model's revenue at risk. This tension carries through to Sections~\ref{sec:7-9}--\ref{sec:7-10}.
-
-\section{Retention Effectiveness Assumption}
-\label{sec:7-7}
-
-Retention success is an assumption, not an observed result. Scenarios: \textbf{Conservative $e = 30\%$}, \textbf{Base $e = 40\%$}, \textbf{Optimistic $e = 50\%$}.
-\begin{equation*}
-    \text{RevenuePreserved} = \text{RevenueAtRisk(targeted churners)} \times e
-\end{equation*}
-
-At $K=10\%$ (Section~\ref{sec:7-6}'s targeted churners), revenue preserved across the three effectiveness scenarios:
-
-\begin{center}
-\begin{tabular}{@{}p{2.8cm}p{2.6cm}p{2.6cm}p{2.6cm}@{}}
-    \toprule
-    Candidate & $e=30\%$ & $e=40\%$ (Base) & $e=50\%$ \\
-    \midrule
-    Final model & 122,094.37 & 162,792.49 & 203,490.62 \\
-    Expected Loss & 349,608.27 & 466,144.36 & 582,680.45 \\
-    RFM rule & 149,974.94 & 199,966.59 & 249,958.24 \\
-    Recency rule & 161,519.13 & 215,358.84 & 269,198.55 \\
-    Random & 99,111.77 & 132,149.03 & 165,186.28 \\
-    \bottomrule
-\end{tabular}
-\end{center}
-
-Because revenue preserved scales linearly with $e$ for a fixed set of targeted churners, the ranking across candidates is unchanged by the effectiveness assumption -- only Section~\ref{sec:7-9}'s cost terms can shift it.
-
-\section{Marketing Cost and the Value of the Model}
-\label{sec:7-8}
-
-If contact cost per customer is roughly constant, targeting $K\%$ instead of everyone reduces reach cost by $(1 - K)$. This saving comes from \textbf{targeting itself}, not from the model -- any ranking at the same $K$ saves the same amount.
-
-The model's contribution is measured by comparing, \textbf{at the same $K$}, the churners captured, revenue preserved and net impact of:
-\begin{enumerate}
-    \item the final model,
-    \item the recency-rule baseline, and
-    \item random targeting.
-\end{enumerate}
-
-At $K=10\%$, $e=40\%$ (Base), contact cost is identical across candidates by construction ($N_K \times c_{\text{contact}}$, same $N_K$):
-
-\begin{center}
-\begin{tabular}{@{}p{2.8cm}p{3cm}p{3cm}p{2.6cm}@{}}
-    \toprule
-    Candidate & Customers targeted & Churners captured & Contact cost \\
-    \midrule
-    Final model & 2,427 & 1,831 & 1,213.50 \\
-    Expected Loss & 2,427 & 1,132 & 1,213.50 \\
-    RFM rule & 2,427 & 1,732 & 1,213.50 \\
-    Recency rule & 2,427 & 1,521 & 1,213.50 \\
-    Random & 2,427 & 986 & 1,213.50 \\
-    \bottomrule
-\end{tabular}
-\end{center}
-
-The reach-cost saving from targeting 10\% instead of everyone is the same 1,213.50 regardless of which candidate ranks customers -- confirming it comes from \emph{targeting}, not the model. The model's own contribution shows up only in churners captured (1,831 vs.\ 986 for random, almost double) -- whether that translates into more net business value depends on revenue at risk and incentive cost too (Section~\ref{sec:7-9}).
-
-\section{Net Business Impact}
-\label{sec:7-9}
-
-Because preserved revenue is not profit, a margin assumption converts it before subtracting costs:
-\begin{align*}
-    \text{GrossProfitPreserved} &= \text{RevenuePreserved} \times m \\
-    \text{ContactCost} &= N_K \times c_{\text{contact}} \\
-    \text{IncentiveCost} &= (TP_K \times e + FP_K \times r) \times c_{\text{inc}} \\
-    \text{NetBusinessImpact} &= \text{GrossProfitPreserved} - \text{ContactCost} - \text{IncentiveCost}
-\end{align*}
-Here $r$ is the assumed share of targeted non-churners who redeem an incentive although they would have purchased anyway (cannibalization). Optionally report $\text{GrossProfitPreserved} \div (\text{ContactCost} + \text{IncentiveCost})$.
-
-At $K=10\%$, $e=40\%$ (Base), $m=35\%$, $c_{\text{contact}}=\pounds0.50$, $c_{\text{inc}}=\pounds5.00$, $r=20\%$:
-
-\begin{center}
-\footnotesize
-\setlength{\tabcolsep}{3pt}
-\begin{tabular}{@{}p{2.2cm}p{1.3cm}p{1.3cm}p{1.6cm}p{1.9cm}p{1.6cm}p{1.6cm}p{1.9cm}@{}}
-    \toprule
-    Candidate & $TP_K$ & $FP_K$ & Revenue preserved & Gross profit preserved & Contact cost & Incentive cost & Net impact \\
-    \midrule
-    Final model & 1,831 & 596 & 162,792.49 & 56,977.37 & 1,213.50 & 4,258.00 & 51,505.87 \\
-    Expected Loss & 1,132 & 1,295 & 466,144.36 & 163,150.52 & 1,213.50 & 3,559.00 & \textbf{158,378.02} \\
-    RFM rule & 1,732 & 695 & 199,966.59 & 69,988.31 & 1,213.50 & 4,159.00 & 64,615.81 \\
-    Recency rule & 1,521 & 906 & 215,358.84 & 75,375.59 & 1,213.50 & 3,948.00 & 70,214.09 \\
-    Random & 986 & 1,441 & 132,149.03 & 46,252.16 & 1,213.50 & 3,413.00 & 41,625.66 \\
-    \bottomrule
-\end{tabular}
-\end{center}
-
-\textbf{Counter-intuitive result.} At this operating point, the \emph{final model's net business impact is below both rule-based baselines} -- even below the simple recency rule -- despite capturing the most churners and leading every ranking metric of Section~\ref{sec:6-quality}. The reason is visible in Section~\ref{sec:7-6}: revenue at risk is driven by \emph{which} customers are targeted (their average order value), not by how many churners are caught. The recency and RFM rules happen to target a higher-order-value subset of customers, so they preserve more revenue per targeted churner even while catching fewer of them. This is not a bug in the model -- it optimizes churn-probability ranking, not revenue-weighted ranking -- but it means \textbf{the best classifier is not automatically the best business decision at a fixed $K$}. Ranking the same model's output by value instead (Expected Loss) triples net impact under this measurement, to \pounds158,378. That figure is inflated by the reference measurement itself, however: Expected Loss reaches only 214 distinct churners and counts each about five times, once per week they stay in its top 10\% -- which is why Section~\ref{sec:7-sens} changes how the campaign is counted.
-
-\section{Measurement Sensitivity: Value and Counting}
-\label{sec:7-sens}
-
-Two choices behind Sections~\ref{sec:7-6}--\ref{sec:7-9} are open to question: the revenue measure (Section~\ref{sec:7-5}) and how a weekly campaign is counted. Three counting schemes are compared:
-
+\textbf{Lists compared.} Each list is chosen separately every week, using only what is known on the scoring Monday:
 \begin{itemize}
-    \item \textbf{Weekly} (reference): the top $K\%$ of all active customers every week. A customer who stays at the top is counted -- and paid for -- every week, although they can only be retained once per churn episode.
-    \item \textbf{Unique}: the same weekly selection, but each customer counts once, at their first targeting. This removes double counting but is \emph{not} budget-equal: a ranking that keeps re-selecting the same customers ends up spending on fewer people.
-    \item \textbf{Suppressed}: every week the same budget $N_K$ goes to the top-ranked customers \emph{not contacted in the previous 13 weeks} ($\approx H$), the suppression rule of Section~\ref{sec:8-5}. This is both budget-equal and free of double counting -- the operationally realistic scheme.
+    \item \textbf{Highest risk of no purchase} -- customers in order of calibrated churn probability, the final model's ranking;
+    \item \textbf{Highest expected margin per contact} -- the top 20\% of the week by expected margin $E[\Delta M]$ (Section~\ref{sec:7-2}), keeping only customers with $E[\Delta M] > 0$; this list also sets the budget (Section~\ref{sec:7-3});
+    \item \textbf{Longest time since last purchase} -- the recency rule, the baseline of Section~\ref{sec:6-select};
+    \item \textbf{Random} -- a reference showing what any untargeted list of the same cost earns.
 \end{itemize}
 
-Net impact at $K=10\%$, $e=40\%$, for every combination (``Churners'' is the number of distinct churners reached):
+\textbf{Unit of every margin figure.} The simulated net margin over the 90 days after one weekly list, averaged over the ten weekly cohorts. A customer can appear in several consecutive weekly lists and the cohorts' 90-day windows overlap, so the weekly figures must not be added into a yearly profit. They are scenario estimates under the assumptions of Section~\ref{sec:7-2}, not measured campaign returns.
+
+\section{Simulation Method}
+\label{sec:7-2}
+
+Every contact has one of two outcomes, the two cases of Section~\ref{sec:2-5}. With a voucher worth a share $d$ of one order of value $V$, a gross margin $m$ before the discount and a contact cost $c$:
+\begin{itemize}
+    \item \textbf{The customer would have stopped buying} (churn $= 1$). A share $e$ of these customers come back because of the voucher; each recovered order brings $V(m - d)$. Gain per contact: $e \cdot V (m - d) - c$.
+    \item \textbf{The customer would have bought anyway} (churn $= 0$). A share $r$ of these customers use the voucher on a purchase they would have made, so the retailer gives away $V d$ on each of them. Effect per contact: $-r \cdot V d - c$.
+\end{itemize}
+Before the outcome is known, the expected margin of a contact combines the two cases with the calibrated churn probability $p$:
+\begin{equation*}
+    E[\Delta M] = p \cdot e \cdot V (m - d) - (1 - p) \cdot r \cdot V d - c.
+\end{equation*}
+The simulation uses the expected margin only to \emph{choose} customers; the realized margin of a list adds up the two cases above using each customer's observed churn label over the following 90 days.
+
+\begin{center}
+\begin{tabular}{@{}p{4.8cm}p{2cm}p{7.4cm}@{}}
+    \toprule
+    Assumption (Base scenario) & Value & Source \\
+    \midrule
+    Voucher $d$ & 10\% & One order at the customer's usual order value $V$ \\
+    Response of would-be churners $e$ & 30\% & Assumption, to be measured in the pilot \\
+    Redemption by would-be buyers $r$ & 40\% & Assumption, to be measured in the pilot \\
+    Gross margin $m$ & 40\% & Assumption; the data hold revenue only \\
+    Contact cost $c$ & \pounds0.50 & Assumption \\
+    \bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Example.} Take a customer who usually spends \pounds300. A 10\% voucher takes \pounds30 off one order; at a 40\% gross margin, that order leaves \pounds120 after product costs, or \pounds90 after the voucher. If the customer would have stopped buying, the voucher wins back 30 in every 100 such customers, so the average gain per contact is 30\% $\times$ \pounds90 $-$ \pounds0.50 $=$ \textbf{+\pounds26.50}. If the customer would have bought anyway, 40 in every 100 use the voucher, so the average effect per contact is $-$40\% $\times$ \pounds30 $-$ \pounds0.50 $=$ \textbf{$-$\pounds12.50}. A good list has many customers of the first kind and few of the second.
+
+\section{Weekly Discount Budget}
+\label{sec:7-3}
+
+The weekly budget has to be set before outcomes are known, so it is defined on the \emph{expected} discount cost of an offer: the voucher is used by the share $e$ of would-be churners and the share $r$ of would-be buyers,
+\begin{equation*}
+    \text{Expected discount cost} = d \cdot V \cdot \big(p \cdot e + (1 - p) \cdot r\big).
+\end{equation*}
+For the same \pounds30 voucher, suppose the model predicts that 60 out of 100 similar customers would skip buying. Under the Base assumptions, 18 of those 60 would buy with the voucher, and 16 of the other 40 would use it on a purchase they already planned, so \textbf{34 vouchers are used}, costing \pounds1,020 in total or \textbf{\pounds10.20 per offer}.
+
+The weekly budget is the expected discount cost of the highest-expected-margin list (top 20\% of each week with $E[\Delta M] > 0$): \textbf{\pounds8,219 per week} in the Base scenario. Every other list works down its own ranking until the next offer would exceed the same budget. All lists therefore spend about the same expected discount; they differ in how many customers that money reaches and in who those customers are.
+
+\section{Results at Equal Budget}
+\label{sec:7-4}
+
+Base scenario, averaged over the ten weekly cohorts (\texttt{notebooks/06\_business\_impact.ipynb}):
 
 \begin{center}
 \footnotesize
 \setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}p{1.6cm}p{2.2cm}p{1.3cm}p{1.1cm}p{1.4cm}p{1.8cm}p{1.8cm}p{2cm}@{}}
+\begin{tabular}{@{}p{4.4cm}rrrrrr@{}}
     \toprule
-    Counting & Candidate & Targeted & $TP_K$ & Churners & \texttt{rar\_aov} & \texttt{rar\_v} & \texttt{rar\_v\_orders} \\
+    How customers are selected & Contacts & \shortstack[r]{Would-be\\churners} & \shortstack[r]{Expected\\discount} & \shortstack[r]{Discount\\given} & \shortstack[r]{Net margin\\(90 days)} & \shortstack[r]{Per \pounds1 of\\exp.\ discount} \\
     \midrule
-    Weekly & Final model & 2,427 & 1,831 & 425 & 51,506 & 51,506 & 64,698 \\
-     & Expected Loss & 2,427 & 1,132 & 214 & \textbf{158,378} & \textbf{112,113} & \textbf{270,653} \\
-     & Recency rule & 2,427 & 1,521 & 542 & 70,214 & 63,767 & 94,395 \\
-     & RFM rule & 2,427 & 1,732 & 531 & 64,616 & 64,616 & 84,222 \\
-     & Random & 2,427 & 986 & 719 & 41,626 & 41,329 & 72,988 \\
-    \midrule
-    Unique & Final model & 577 & 425 & 425 & 13,679 & 13,679 & 17,249 \\
-     & Expected Loss & 431 & 199 & 199 & 24,192 & 19,090 & 44,647 \\
-     & Recency rule & 899 & 542 & 542 & 26,072 & 23,234 & 33,790 \\
-     & RFM rule & 771 & 531 & 531 & 20,134 & 20,134 & 25,920 \\
-     & Random & 1,635 & 679 & 679 & \textbf{28,731} & \textbf{28,625} & \textbf{47,586} \\
-    \midrule
-    Suppressed & Final model & 2,427 & 1,212 & 1,212 & \textbf{54,830} & \textbf{49,787} & 77,305 \\
-     & Expected Loss & 2,427 & 1,000 & 1,000 & 54,513 & 49,411 & \textbf{81,337} \\
-     & Recency rule & 2,427 & 1,152 & 1,152 & 52,865 & 48,144 & 75,114 \\
-     & RFM rule & 2,427 & 1,220 & 1,220 & 51,350 & 49,700 & 70,273 \\
-     & Random & 2,427 & 986 & 986 & 47,364 & 42,321 & 71,258 \\
+    \textbf{Highest risk of no purchase} & 826 & 521 & \pounds8,213 & \pounds8,357 & \textbf{\pounds9,060} & \pounds1.10 \\
+    Highest expected margin per contact & 485 & 288 & \pounds8,219 & \pounds8,316 & \pounds8,228 & \pounds1.00 \\
+    Longest time since last purchase & 684 & 378 & \pounds8,210 & \pounds8,320 & \pounds6,079 & \pounds0.74 \\
+    Random (reference) & 605 & 241 & \pounds8,201 & \pounds8,238 & \pounds979 & \pounds0.12 \\
     \bottomrule
 \end{tabular}
+\end{center}
+
+\begin{center}
+\includegraphics[width=0.9\textwidth]{figures/ch7_equal_budget_weekly.png}
 \end{center}
 
 Four observations:
 \begin{enumerate}
-    \item \textbf{Weekly counting inflates every total, unequally.} The final model reaches only 425 distinct churners behind its 1,831 $TP_K$ (4.3 weeks each), Expected Loss 214 behind 1,132 (5.3 each), random 719 behind 986. Rankings that keep the same customers at the top are rewarded for it.
-    \item \textbf{Capping matters only for the recency rule.} Four targeted wholesale-sized rows carry \pounds54K of its raw revenue at risk; with $V$ its weekly net impact falls from \pounds70,214 to \pounds63,767, below the RFM rule. The final model and the RFM rule never reach those accounts.
-    \item \textbf{Unique counting mostly measures reach.} Because it is not budget-equal, random -- which spreads its selections over 1,635 customers -- comes out on top; the ranking that re-selects the most (the final model, 577 customers) comes out last.
-    \item \textbf{Under suppressed counting at $K=10\%$, the candidates converge} (\pounds70--81K under \texttt{rar\_v\_orders}): with a 13-week suppression over a 10-week test, a 10\% weekly budget contacts 83\% of all 2,907 test customers at least once, so every ranking ends up reaching almost the same people, only in a different order. Section~\ref{sec:7-10} therefore looks at smaller weekly shares.
+    \item \textbf{The model creates the value.} With the same expected discount spend, ranking by churn risk adds \textbf{\pounds2,982 (49\%)} more simulated margin than the longest-inactive rule and leads it \textbf{in all ten test weeks}. It reaches 521 would-be churners per week against 378 for the recency rule, so more of the budget goes to customers whose purchase can be recovered: \pounds1.10 of margin per \pounds1 of expected discount (\pounds1.08 per \pounds1 of discount actually given).
+    \item \textbf{Adding customer value does not raise the total at equal spend.} The expected-margin list favors customers with large orders, whose vouchers cost more, so the same budget reaches only 485 customers. It earns \pounds833 less than the risk-ranked list and trails it in all ten weeks, but uses 341 fewer contacts: it is the lighter option when contact capacity, not the discount budget, is the binding constraint (Section~\ref{sec:8-3}).
+    \item \textbf{Untargeted offers waste the budget.} A random list of the same cost earns \pounds979 and turns negative in the last three weeks: most of its vouchers go to customers who would have bought anyway.
+    \item \textbf{The level moves with the season, the order does not.} Every list earns less from July to September because later cohorts' 90-day windows run into the pre-Christmas season, when fewer customers churn (Section~\ref{sec:5-4}); the ranking of the lists is the same in every week.
 \end{enumerate}
 
-\section{Scenario Analysis}
-\label{sec:7-10}
+\textbf{Ranking quality.} On the same test rows, the calibrated churn probability reaches an AUC of 0.759, against 0.638 for days since the last purchase and 0.496 for random -- the predictive criterion of Section~\ref{sec:2-6}. The targeting and business-scenario criteria are met as well: the model-ranked list reaches more would-be churners than the recency rule at the same spend, and its simulated margin is positive and higher in all ten weeks.
 
-Net impact under the realistic scheme -- suppressed counting -- for weekly target shares below the saturation point, all three revenue measures, $e=40\%$ and the cost assumptions of Section~\ref{sec:7-9}. ``Reach'' is the share of the 2,907 test customers contacted at least once; the last column compares each candidate with the recency rule under \texttt{rar\_v\_orders}:
+\textbf{The discount given differs slightly from the plan.} Each list spends about 1--2\% more than expected (\pounds8,357 against \pounds8,213 for the risk-ranked list). The expected cost uses the calibrated probability, which overestimates churn slightly in the test weeks (0.418 against 0.401); since would-be buyers redeem more often than would-be churners ($r > e$), overestimating churn underestimates the cost. Recalibrating on recent weeks (Section~\ref{sec:8-7}) keeps the spend on budget.
+
+\section{Scenario Analysis}
+\label{sec:7-5}
+
+\textbf{Voucher depth.} Three offers, each with its own budget recomputed from that scenario's expected-margin list:
 
 \begin{center}
 \footnotesize
 \setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}p{0.8cm}p{2.3cm}p{1cm}p{1.1cm}p{1.8cm}p{1.8cm}p{2.1cm}p{2.1cm}@{}}
+\begin{tabular}{@{}p{1.6cm}rrrrrrr@{}}
     \toprule
-    $K$ & Candidate & Reach & $TP_K$ & \texttt{rar\_aov} & \texttt{rar\_v} & \texttt{rar\_v\_orders} & vs.\ recency \\
+    Scenario & \shortstack[r]{Voucher\\$d$} & \shortstack[r]{Response\\$e$} & \shortstack[r]{Weekly\\budget} & \shortstack[r]{Risk-ranked\\contacts} & \shortstack[r]{Highest\\risk} & \shortstack[r]{Expected-\\margin list} & \shortstack[r]{Longest since\\purchase} \\
     \midrule
-    1\% & Final model & 8\% & 185 & 3,926 & 3,926 & 4,899 & $-$4,536 \\
-     & Expected Loss & 8\% & 113 & \textbf{17,660} & \textbf{12,558} & \textbf{35,258} & $+$25,823 \\
-     & Recency rule & 8\% & 166 & 6,157 & 6,157 & 9,435 & -- \\
-     & RFM rule & 8\% & 188 & 6,501 & 6,501 & 6,969 & $-$2,465 \\
-     & Random & 8\% & 100 & 4,882 & 4,690 & 7,462 & $-$1,972 \\
-    \midrule
-    2\% & Final model & 17\% & 363 & 10,776 & 10,776 & 12,782 & $-$7,337 \\
-     & Expected Loss & 17\% & 225 & \textbf{25,704} & \textbf{20,574} & \textbf{46,366} & $+$26,247 \\
-     & Recency rule & 17\% & 315 & 15,057 & 13,253 & 20,120 & -- \\
-     & RFM rule & 17\% & 362 & 13,581 & 13,581 & 17,963 & $-$2,157 \\
-     & Random & 17\% & 189 & 7,964 & 7,964 & 15,740 & $-$4,380 \\
-    \midrule
-    5\% & Final model & 42\% & 766 & 28,866 & 27,832 & 37,031 & $-$4,164 \\
-     & Expected Loss & 42\% & 517 & \textbf{40,594} & \textbf{35,493} & \textbf{65,354} & $+$24,159 \\
-     & Recency rule & 42\% & 688 & 31,175 & 28,278 & 41,195 & -- \\
-     & RFM rule & 42\% & 742 & 29,214 & 28,181 & 38,051 & $-$3,144 \\
-     & Random & 42\% & 496 & 21,452 & 21,347 & 38,305 & $-$2,890 \\
-    \midrule
-    10\% & Final model & 83\% & 1,212 & 54,830 & 49,787 & 77,305 & $+$2,191 \\
-     & Expected Loss & 83\% & 1,000 & 54,513 & 49,411 & 81,337 & $+$6,224 \\
-     & Recency rule & 83\% & 1,152 & 52,865 & 48,144 & 75,114 & -- \\
-     & RFM rule & 83\% & 1,220 & 51,350 & 49,700 & 70,273 & $-$4,841 \\
-     & Random & 83\% & 986 & 47,364 & 42,321 & 71,258 & $-$3,855 \\
+    Light & 5\% & 20\% & \pounds3,725 & 906 & \textbf{\pounds8,754} & \pounds7,766 & \pounds6,224 \\
+    \textbf{Base} & 10\% & 30\% & \pounds8,219 & 826 & \textbf{\pounds9,060} & \pounds8,228 & \pounds6,079 \\
+    Deep & 20\% & 40\% & \pounds14,866 & 664 & \textbf{\pounds3,695} & \pounds3,173 & \pounds664 \\
     \bottomrule
 \end{tabular}
 \end{center}
 
-Below saturation, the picture is consistent across all three revenue measures. \textbf{Expected Loss is the best ranking at every $K$ from 1\% to 5\%}, by a wide margin -- at $K=2\%$, \pounds46,366 against \pounds20,120 for the recency rule and \pounds12,782 for the final model under \texttt{rar\_v\_orders}, and still ahead under the raw order value it was not built on (\pounds25,704 vs.\ \pounds15,057 and \pounds10,776). The final model, ranking by churn probability alone, is the \emph{weakest} ranking at these budgets under \texttt{rar\_v\_orders} -- below even random targeting: it spends a scarce budget on customers who are almost certain to leave but would cost little (mostly one-time buyers, Section~\ref{sec:7-12}). Expected Loss catches fewer churners ($TP_K$ 225 vs.\ 363 at $K=2\%$) -- its targets churn less often -- but the cost of contacting a non-churner (\pounds0.50 plus a 20\% chance of a \pounds5 redemption) is small next to the value of keeping one high-value churner. One caveat: Expected Loss is built on \texttt{rar\_v\_orders}, so its lead under that measure is partly by construction; its lead under \texttt{rar\_aov} and \texttt{rar\_v} is the independent evidence.
+Ranking by churn risk earns the most in every scenario and leads the longest-inactive rule in all ten weeks of each; it leads the expected-margin list in 10, 10 and 9 of the ten weeks. A deeper voucher brings back more customers but gives away twice the discount on every redeemed order, so a 20\% voucher earns far less than a 10\% one despite a budget almost twice as large. The 10\% Base scenario is the starting point for the pilot (Chapter~\ref{ch:conclusion}).
 
-\section{Model Comparison}
-\label{sec:7-11}
-
-Compare candidates (including baselines) on detection quality and business-impact scenarios. Do not define a single "best" model from classification metrics alone when the objective depends on ranking and cost constraints.
+\textbf{Gross margin.} The data hold revenue only, so $m$ is an assumption; Base voucher, each margin at its own equal budget:
 
 \begin{center}
-\begin{tabular}{@{}p{3cm}p{1.6cm}p{4.2cm}p{4.2cm}@{}}
+\footnotesize
+\begin{tabular}{@{}p{2.2cm}rrrrr@{}}
     \toprule
-    Candidate & AUC & Net impact, reference (weekly, \texttt{rar\_aov}, $K$=10\%) & Net impact, realistic (suppressed, \texttt{rar\_v\_orders}, $K$=5\%) \\
+    Gross margin $m$ & \shortstack[r]{Weekly\\budget} & \shortstack[r]{Risk-ranked\\contacts} & \shortstack[r]{Highest\\risk} & \shortstack[r]{Expected-\\margin list} & \shortstack[r]{Longest since\\purchase} \\
     \midrule
-    Final model & \textbf{0.759} & 51,506 & 37,031 \\
-    Expected Loss & 0.533 & \textbf{158,378} & \textbf{65,354} \\
-    RFM rule & 0.728 & 64,616 & 38,051 \\
-    Recency rule & 0.638 & 70,214 & 41,195 \\
-    Random & 0.506 & 41,626 & 38,305 \\
+    30\% & \pounds7,294 & 755 & \textbf{\pounds4,369} & \pounds3,989 & \pounds2,291 \\
+    \textbf{40\%} & \pounds8,219 & 826 & \textbf{\pounds9,060} & \pounds8,228 & \pounds6,079 \\
+    50\% & \pounds8,744 & 867 & \textbf{\pounds14,132} & \pounds12,670 & \pounds10,103 \\
     \bottomrule
 \end{tabular}
 \end{center}
 
-No candidate wins on every column, and the split is now clean. The final model's \emph{probability} is unambiguously the best churn detector (highest AUC, Section~\ref{sec:6-quality}) -- against the Success Criteria of Section~\ref{sec:2-6}, it clears the ``AUC beats the baselines'' bar comfortably. Expected Loss has a far lower AUC by design: it trades some certainty of churn for the value of who churns, so fewer than half of its targets actually churn. But ranked by probability alone, the final model is not the best business decision: it trails the recency rule in net impact under both the reference and the realistic measurement. Ranked by \textbf{Expected Loss} -- the same model, calibrated and multiplied by each customer's value -- it meets the ``business-scenario'' criterion (positive and above the recency rule and random at the same $K$) under every measurement and every weekly budget from 1\% to 10\% with suppression. The recommended operating rule is therefore: \textbf{score churn risk with the model, rank by Expected Loss, contact a small weekly share with suppression} (Chapter~\ref{ch:deployment}). All figures remain scenario estimates under the stated assumptions (Section~\ref{sec:7-12}).
+The order of the three lists does not change with the margin, but the level does: at a 30\% margin a \pounds300 order won back contributes only \pounds60 after the voucher, and the risk-ranked list earns less than half of its Base margin. Finance should confirm actual product margins before launch.
 
 \section{Error Analysis and Limitations}
 \label{sec:7-12}
 
-Investigate false positives, false negatives, segments (one-time vs repeat, UK vs non-UK, wholesale-sized customers) and weeks where performance differs, including seasonal effects. State clearly that Online Retail II contains no campaign treatment/control information, so incremental revenue, causal retention effect and true campaign ROI cannot be identified. Business-impact results are scenario estimates.
-
-Targeting the top 10\% by the final model's score, pooled across the test period: 57.5\% true negatives, 32.5\% false negatives, 7.6\% true positives, 2.4\% false positives -- the false-negative share is large by construction, since a 10\%-wide net cannot catch most of a $\approx$40\% base rate.
+As a fixed diagnostic of the model's ranking (\texttt{notebooks/05\_scoring.ipynb}), the top 10\% of the test rows by the final model's score are treated as ``targeted'' and the errors are broken down by segment (one-time vs repeat), country (UK vs non-UK) and wholesale-sized customers. Pooled across the test period: 57.5\% true negatives, 32.5\% false negatives, 7.6\% true positives, 2.4\% false positives -- the false-negative share is large by construction, since a 10\%-wide net cannot catch most of a $\approx$40\% base rate.
 
 \begin{center}
 \begin{tabular}{@{}p{3.6cm}p{2.6cm}p{2.6cm}@{}}
@@ -283,6 +152,8 @@ Targeting the top 10\% by the final model's score, pooled across the test period
 \end{tabular}
 \end{center}
 
-Three patterns stand out. \textbf{One-time customers} are missed far more often than repeat customers (54.8\% vs.\ 34.6\% FN rate) -- with only one purchase occasion, their feature history is thin, and the model has less signal to work with (consistent with the One-time group of Section~\ref{sec:4-6}). \textbf{Non-UK customers} see a clearly higher false-positive rate (36.7\% vs.\ 23.4\% for UK) -- the model, trained overwhelmingly on UK behavior (Section~\ref{sec:4-2}), generalizes less cleanly to the small non-UK population (9.6\% of test rows). \textbf{Wholesale-like customers} (monetary value so far at or above the train period's 99th percentile; 658 test rows) are the model's strongest case: a 5.6\% false-negative rate, far below retail's 37.0\%, and none were false positives in the targeted top 10\% -- their high, frequent purchase volume makes their churn signal unusually clear.
+Three patterns stand out. \textbf{One-time customers} are missed far more often than repeat customers (54.8\% vs.\ 34.6\% FN rate) -- with only one purchase occasion, their feature history is thin, and the model has less signal to work with (the one-time group of Section~\ref{sec:4-4}); the pilot therefore reports one-time and repeat buyers separately (Chapter~\ref{ch:conclusion}). \textbf{Non-UK customers} see a clearly higher false-positive rate (36.7\% vs.\ 23.4\% for UK) -- the model, trained overwhelmingly on UK behavior (Section~\ref{sec:4-2}), generalizes less cleanly to the small non-UK population (9.6\% of test rows). \textbf{Wholesale-like customers} (monetary value so far at or above the train period's 99th percentile; 658 test rows) are the model's strongest case: a 5.6\% false-negative rate, far below retail's 37.0\%, and none were false positives in the targeted top 10\% -- their high, frequent purchase volume makes their churn signal unusually clear.
 
-\textbf{Principle.} \textbf{Project-wide business-impact principle.} The model identifies and prioritizes churn risk; the retention campaign determines treatment; actual incremental revenue requires treatment/control data. Revenue at risk, revenue preserved, cost saving and net impact are simulation outputs unless supported by observed campaign outcomes.
+\textbf{Limitations of the simulation.} Online Retail II contains no campaign treatment/control information, so the response $e$, the redemption $r$ and the margin $m$ are assumptions, and incremental revenue, causal retention effect and true campaign ROI cannot be identified from this data. The results cover a single test season (Jul--Sep 2011), and the weekly cohorts overlap. Chapter~\ref{ch:robustness} discusses how far the conclusions depend on these choices.
+
+\textbf{Principle.} The model identifies and prioritizes churn risk; the retention campaign determines treatment; actual incremental profit requires treatment/control data. Every margin figure in this chapter is a simulation output until a pilot with a no-offer control group measures it (Chapter~\ref{ch:conclusion}).

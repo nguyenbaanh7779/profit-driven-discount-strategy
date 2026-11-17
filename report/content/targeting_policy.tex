@@ -1,0 +1,73 @@
+\textbf{Note.} This chapter describes a \textbf{proposed operational design}. It is not implemented as a live system in this project; the score table, the action table and the dashboard are built from the historical weeks.
+
+\section{Objective}
+\label{sec:8-1}
+
+Turn the weekly churn scores into a voucher list that respects a fixed discount budget, give marketing the list and a small set of decision KPIs, and monitor the score so that the list stays on budget as the season changes.
+
+\section{Weekly Decision Cycle}
+\label{sec:8-2}
+
+Every Monday, every active customer is scored; per-customer training weights ($1/n_i$) are \textbf{not} part of this pipeline, they exist only in training-data construction.
+
+\begin{center}
+\textbf{Latest transactions} $\rightarrow$ \textbf{Valid transactions} $\rightarrow$ \textbf{Active customers} (Recency $\leq R_{\max}$) $\rightarrow$ \textbf{Remove enrolled customers} \\[0.3cm]
+$\rightarrow$ \textbf{Features} $\rightarrow$ \textbf{Calibrated churn probability} $\rightarrow$ \textbf{Ranking} $\rightarrow$ \textbf{Weekly discount budget} $\rightarrow$ \textbf{Voucher list}
+\end{center}
+
+\section{Recommendation Layer}
+\label{sec:8-3}
+
+\textbf{Weekly voucher rule.} Rank the week's active customers by calibrated churn probability and offer the voucher down the list until the next offer would exceed the weekly expected discount budget, where each offer's expected cost is $d \cdot V \cdot (p e + (1 - p) r)$ (Section~\ref{sec:7-3}). With a 10\% voucher and a budget of about \pounds8,200, this is the ``highest risk of no purchase'' list of Section~\ref{sec:7-4}: about \textbf{826 customers a week} in the test weeks, for a simulated \pounds9,060 of net margin per weekly cohort. Each customer gets one of two actions, \textbf{Voucher} or \textbf{No voucher}.
+
+\textbf{When contacts are the constraint.} If marketing can reach only about 500 customers a week, the highest-expected-margin list -- the top 20\% of active customers by expected margin, with $E[\Delta M] > 0$ -- is the lighter option: 485 contacts for the same expected discount, 341 contacts fewer for \pounds833 less simulated margin.
+
+\textbf{Who gets the voucher.} On the last scored Monday (5 December 2011, no outcome yet), 818 of 3,181 active customers are offered a voucher, for an expected discount cost of \pounds8,201 and an expected incremental margin of \pounds11,313 over the next 90 days. By the RFM segments of Section~\ref{sec:5-5}, the list goes to Potential (352), Hibernating (269), At Risk (194) and Can't Lose (3) customers; Champions and Loyal customers, who mostly buy anyway, get none. About 31\% of the vouchers are still expected to go to customers who would have bought anyway, which is the margin the pilot has to check.
+
+\section{Customer-Level Score Table}
+\label{sec:8-4}
+
+The score table is the deliverable behind the list. It covers the 10 test weeks and the 13 later weeks (2011-09-12 -- 2011-12-05), which stand in for the deployment batch because they can be scored but not yet evaluated (Section~\ref{sec:5-4}).
+
+{\raggedright
+\begin{itemize}
+    \item \texttt{data/results/churn\_scores\_h90.parquet} (\texttt{notebooks/05\_scoring.ipynb}): \texttt{customer\_id}, \texttt{snapshot\_date}, \texttt{segment}, \texttt{split}, \texttt{churn\_probability}, \texttt{churn\_probability\_calibrated} (Section~\ref{sec:6-quality}), \texttt{risk\_band} (fixed cut-offs on the calibrated probability), \texttt{rank} (by calibrated probability within the week, 1 = highest risk), \texttt{model\_version} and the observed \texttt{churn} label where it exists.
+    \item \texttt{data/results/customer\_scores\_actions\_h90.parquet} (\texttt{notebooks/07\_action\_table.ipynb}): the same rows plus \texttt{value\_v}, \texttt{rfm\_segment}, \texttt{customer\_type}, \texttt{expected\_discount\_cost}, \texttt{expected\_margin}, \texttt{action} and the scenario used.
+\end{itemize}
+}
+
+\section{Dashboard}
+\label{sec:8-5}
+
+\texttt{dashboard/app.py} (Streamlit) is the actionable view for marketing. It reads the action table and needs no model. For the current Monday it shows five KPIs -- active customers, customers who get a voucher, expected discount cost, revenue at risk in the list and expected extra profit -- and walks through four steps: who is likely to stop buying (the eight behaviour groups of Section~\ref{sec:4-6}, applied at every snapshot by \texttt{src/make\_rfm8.py}), who gets a voucher, whether it pays off (a replay on the ten test weeks against the longest-inactive rule and an offer to everyone) and the downloadable list. The sidebar sets the weekly budget (default \pounds8,220) and the offer scenario, so the list and the replay update together.
+
+\section{Suppression and Enrolment}
+\label{sec:8-6}
+
+Customers who receive a voucher are excluded from the weekly list for a suppression period $S$ of at least $H$ days (about 13 weeks), so the same customer is not offered twice within one churn window. In the pilot, each customer is enrolled once and keeps their assignment (Chapter~\ref{ch:conclusion}). Suppression:
+
+\begin{itemize}
+    \item applies only to customers who were actually offered a voucher, not to everyone who was scored;
+    \item is an operational business rule, independent of how training rows are sampled or weighted;
+    \item is logged, so that suppressed customers can be analyzed separately once campaign data exist.
+\end{itemize}
+
+The equal-budget simulation of Chapter~\ref{ch:evaluation} applies no suppression, so its weekly cohorts overlap and are not added together (Section~\ref{sec:7-1}).
+
+\section{Monitoring and Retraining}
+\label{sec:8-7}
+
+Data quality, feature drift, the weekly model checks of Section~\ref{sec:6-quality} against the validation reference, and the business results of the list. They split by when they become available:
+
+\begin{itemize}
+    \item \textbf{Immediately, without labels:} HHI and CSI of the risk-band distribution, the number of vouchers and their expected discount cost against the budget. CSI is the early warning -- on the test period it already crossed 0.10 within six weeks as the churn rate fell.
+    \item \textbf{After $H = 90$ days, once labels mature:} AUC, Brier score, the mean calibrated probability against the observed churn rate, and the discount actually given against the expected cost (1--2\% above it in the test weeks, Section~\ref{sec:7-4}).
+    \item \textbf{From the pilot:} the response of would-be churners and the redemption by would-be buyers, measured against the no-offer control group, which replace the assumed $e$ and $r$ of Section~\ref{sec:7-2}.
+\end{itemize}
+
+Calibration is tied to the churn rate of the data it was fitted on, so it drifts whenever that rate moves -- as it does seasonally here -- and with it the expected cost used to fill the budget. Two responses, from light to heavy:
+
+\begin{itemize}
+    \item \textbf{Recalibrate} (quarterly, or when the mean calibrated probability and the observed churn rate differ by more than about 5 percentage points): refit only the log-odds offset $\delta$ on the latest weeks with matured labels. The model, its ranking and the band order are untouched; the band cut-offs are recomputed from the same weeks. Because labels arrive $H$ days late, the recalibrated rate always reflects the previous quarter -- the churn rate of the same season a year earlier is a reasonable alternative target.
+    \item \textbf{Retrain} when AUC falls clearly below its validation level or CSI exceeds 0.25, or whenever the churn definition itself changes (e.g.\ a different $H$), which invalidates both the model and its calibration. Retraining uses the same embargoed temporal design and the same Training Population rule.
+\end{itemize}

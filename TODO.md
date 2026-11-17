@@ -10,6 +10,8 @@ Priority: **P1** required by the course · **P2** core of the strategy · **P3**
 - [x] Data Preparation chapter restructured into 7 sections (#6)
 - [x] `activity_last_90d` computed by key instead of row position (#7)
 - [x] `latex/` renamed to `report/`; added `brief/` (2-page executive brief) and `slide/` (10-minute presentation deck) as separate top-level LaTeX deliverables
+- [x] Weighted training scheme and model selection (#13); calibration offset and modeling chapter condensed to three sections (#16, #17)
+- [x] Brief, slide deck and report aligned with the merged group deck "Profit-Driven Discount Strategy"; notebooks reduced to the seven that feed them (01-07)
 
 ## P1 — Required by the course
 
@@ -20,31 +22,33 @@ Priority: **P1** required by the course · **P2** core of the strategy · **P3**
   - New columns in `modeling_dataset_h90.parquet`; update Chapters 4–5
   - Done when: segment table and V cap are in the report, cut-offs come from the training period only
 
-- [ ] **`feat/policy-simulation`** — promotion scenarios and policy comparison (Strategy 7.6–7.10)
+- [x] **`feat/policy-simulation`** — promotion scenarios and policy comparison (Strategy 7.6–7.10)
+  - Done as an equal-budget comparison (#18, notebook 06): risk ranking vs expected margin vs recency vs random at the same expected discount spend, Light/Base/Deep vouchers and m ∈ {30, 40, 50%}. The equal-contact P0–P6 grid over K was dropped because no deliverable uses it
   - E[ΔM] per customer; realized margin M_policy on test with actual labels
   - Scenarios Light (5%, 20%), Base (10%, 30%), Deep (20%, 40%) × K ∈ {10, 20, 30, 40, 50%}; sensitivity m ∈ {30, 40, 50%}, r ∈ {20, 40, 60%}
   - Policies P0 No offer, P1 Blanket, P2 Random, P3 Recency, P4 RFM-segment, P5 Model risk-only, P6 Model value-aware
   - Replaces the current e-only scenario tables (Chapter 7.6–7.10) and their assumptions (m = 35%, r = 20%, flat £5 incentive)
   - Done when: policy table at the base scenario and operating K, full grid in an appendix, value captured@K reported
 
-- [ ] **`docs/deliverables`** — required project package (Strategy 3.7, 9.4)
-  - `README.md`: setup, run order of notebooks 01 → 05, outputs of each step
+- [x] **`docs/deliverables`** — required project package (Strategy 3.7, 9.4) (#18)
+  - `README.md`: setup, run order of notebooks 01 → 07, outputs of each step
   - `docs/data_dictionary.md` + source log (URL, download date, license, filters, joins, cleaning log)
   - `docs/model_card.md` (one page)
   - Executive brief: done separately as `brief/main.tex` (not `docs/executive_brief.md`)
   - Done when: a third party can rerun the pipeline from the README
 
-- [ ] **`feat/dashboard`** — 3–5 KPIs and one actionable view (Strategy 8.5); built from scratch
+- [x] **`feat/dashboard`** — 3–5 KPIs and one actionable view (Strategy 8.5); built from scratch (#18, #20)
   - KPIs: active customers, revenue at risk in the target list, expected incremental margin, share of offers to likely buyers, customers per action
   - Controls for K, discount scenario and margin; target list with actions; policy comparison chart
   - Done when: it runs from the score table without re-training
 
 ## P2 — Core of the strategy
 
-- [ ] **`feat/calibration-check`** — Platt / isotonic vs raw LR, fitted on validation (Strategy 6.6); keep only if Brier improves without hurting ranking
+- [x] **`feat/calibration-check`** — Platt / isotonic vs raw LR, fitted on validation (Strategy 6.6); keep only if Brier improves without hurting ranking
+  - Kept the intercept offset fitted on the refit pool (report Section 6.3); recalibration is part of monitoring (Section 8.7)
 
-- [ ] **`feat/value-aware-targeting`** — recommendation layer and full score table (Strategy 8.3–8.4)
-  - Actions Retain / Nurture / No-offer
+- [x] **`feat/value-aware-targeting`** — recommendation layer and full score table (Strategy 8.3–8.4)
+  - Actions Voucher / No voucher by the weekly budget rule (notebook 07); Retain / Nurture / No-offer was replaced
   - Score table columns: `value_v`, `rfm_segment`, `expected_margin`, `rank`, `action`, `model_version`
   - Depends on: value-and-rfm-segments, policy-simulation
 
@@ -52,9 +56,9 @@ Priority: **P1** required by the course · **P2** core of the strategy · **P3**
 
 ## P3 — Robustness and report
 
-- [ ] **`feat/rolling-backtest`** — 3–4 expanding-window folds covering Nov 2010 – Sep 2011, mean ± std and worst week (Strategy 7.5)
-- [ ] **`feat/robustness-checks`** — with/without V cap, sensitivity grid, optional suppression run and H = 60 (Strategy 9.1)
-- [ ] **`docs/report-structure`** — align the LaTeX report with Strategy v2
+- [ ] ~~**`feat/rolling-backtest`**~~ — built in #18 (notebook 11), removed because no deliverable uses it; still the strongest robustness check to add back if the report needs it (Strategy 7.5)
+- [ ] **`feat/robustness-checks`** — with/without V cap, sensitivity grid, optional suppression run and H = 60 (Strategy 9.1); voucher and margin scenarios are done (report Section 7.5)
+- [x] **`docs/report-structure`** — align the LaTeX report with Strategy v2
   - Chapter 8 → Targeting Policy & Decision Support (merge Feedback/monitoring into 8.7)
   - Chapter 9 → Robustness, Ethics & Limitations (ethics and bias section is new)
   - Chapter 10 → Conclusion & Recommendations with the recommended policy, K and discount

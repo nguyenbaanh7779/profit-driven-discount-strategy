@@ -1,0 +1,35 @@
+This chapter asks how far the recommendation of Chapter~\ref{ch:evaluation} -- rank by churn risk and fill a fixed weekly discount budget -- depends on the assumptions, the season and particular customer groups, and what the data cannot tell us.
+
+\section{Scenario Robustness}
+\label{sec:9-1}
+
+The ranking of the lists is stable across every variation tested (Section~\ref{sec:7-5}). At the same expected discount spend, ranking by churn risk earns the most in the Light (5\% voucher), Base (10\%) and Deep (20\%) scenarios and at gross margins of 30\%, 40\% and 50\%, and it leads the longest-inactive rule in all ten weeks of every one of them. What changes is the level: a deeper voucher or a thinner margin shrinks the simulated net margin sharply (\pounds3,695 per weekly cohort for a 20\% voucher, \pounds4,369 at a 30\% margin, against \pounds9,060 in the Base scenario). The choice of \emph{who} gets the voucher is therefore robust; the choice of \emph{how deep} the voucher should be and whether it pays at all depends on numbers the data do not contain.
+
+\section{Seasonality and Calibration}
+\label{sec:9-2}
+
+The churn rate moves with the season, from 34.8\% to 62.7\% by snapshot month (Section~\ref{sec:5-4}), and the model has no calendar feature. Its ranking holds up (weekly test AUC 0.744--0.773, Section~\ref{sec:6-quality}), but its probability level is tied to the period it was calibrated on: the refit pool churns at 50.0\%, the test weeks at 40.1\%, and the mean calibrated probability (0.418) sits slightly above the observed rate. Because the weekly budget is filled with expected costs computed from these probabilities, a miscalibrated level shows up as a spend that differs from the plan -- 1--2\% above it in the test weeks (Section~\ref{sec:7-4}). The rising CSI over the test weeks is the same effect seen without labels. Recalibrating the offset on recent weeks, as described in Section~\ref{sec:8-7}, is the remedy; a calendar feature or a per-season base rate would be the longer-term fix.
+
+\section{Customer Groups}
+\label{sec:9-3}
+
+\begin{itemize}
+    \item \textbf{One-time buyers} are 13.3\% of test rows and the group the model ranks least well: they are missed far more often than repeat customers (false-negative rate 54.8\% vs.\ 34.6\%, Section~\ref{sec:7-12}), because one purchase leaves little history. Pilot results should be reported separately for one-time and repeat buyers.
+    \item \textbf{Non-UK customers} (9.6\% of test rows) receive more false positives (36.7\% vs.\ 23.4\%) because the model is trained mostly on UK behavior.
+    \item \textbf{Large accounts.} Revenue is concentrated in a few wholesale-sized customers (Sections~\ref{sec:4-6}--\ref{sec:4-7}), which is why the value proxy $V$ is capped at its training-period 99th percentile (Section~\ref{sec:5-5}). The cap matters most for the expected-margin option, which weighs customers by value; the risk-ranked list does not use $V$ to rank, only to price the voucher.
+\end{itemize}
+
+\section{Data Limitations}
+\label{sec:9-4}
+
+\begin{itemize}
+    \item \textbf{No campaign data.} There are no past vouchers, contacts or control groups, so the response of would-be churners ($e$ = 30\%) and the redemption by would-be buyers ($r$ = 40\%) are assumptions, and every margin figure is a simulation, not a measured return.
+    \item \textbf{No costs or margins.} Product cost is not in the data; the 40\% gross margin and the \pounds0.50 contact cost are assumptions. Finance should confirm the actual margins before launch (Section~\ref{sec:7-5}).
+    \item \textbf{A single, short test season.} The test covers ten weekly cohorts in July--September 2011, the low-churn part of the year, and the cohorts' 90-day windows overlap.
+    \item \textbf{A response is not a retained customer.} A recovered order is counted once, at the customer's usual order value; the longer-term value of keeping a customer is not modeled.
+\end{itemize}
+
+\section{Ethics and Fairness}
+\label{sec:9-5}
+
+The model and the voucher rule use purchase behavior only -- recency, frequency, spend, order value, tenure and purchase rhythm. They use no demographic or other protected attributes; country is not a feature and appears only in the error analysis. The decision is to offer an extra discount, not to raise prices or withhold service, so customers who are not selected pay the usual price. Two points still need care before rollout: error rates differ by country (Section~\ref{sec:9-3}) and results by country and customer size have not been formally checked, and customer identifiers in the score table and the downloadable list should be handled as personal data. The dataset itself is public (UCI, CC BY 4.0) and contains no names or contact details.
